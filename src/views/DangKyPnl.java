@@ -4,6 +4,8 @@ import components.ModernButton;
 import components.ModernPasswordField;
 import components.ModernTextField;
 import components.RoundedPanel;
+import controllers.TaiKhoanController;
+import dto.KetQuaDangKy;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -23,6 +25,8 @@ public class DangKyPnl extends JPanel {
     private ModernTextField txtSDT;
     private ModernPasswordField txtMatKhau;
     private ModernPasswordField txtXacNhanMatKhau;
+    
+    private TaiKhoanController taiKhoanController = new TaiKhoanController();
 
     public DangKyPnl(MainFrm mainFrm) {
         this.main = mainFrm;
@@ -143,114 +147,25 @@ public class DangKyPnl extends JPanel {
     }
 
     private void xuLyDangKy() {
-    java.sql.Connection con = null;
+    String hoTen = txtHoTen.getText().trim();
+    String cccd = txtCCCD.getText().trim();
+    String sdt = txtSDT.getText().trim();
+    String matKhau = new String(txtMatKhau.getPassword());
+    String xacNhanMK = new String(txtXacNhanMatKhau.getPassword());
 
-    try {
-        String hoTen = txtHoTen.getText().trim();
-        String cccd = txtCCCD.getText().trim();
-        String sdt = txtSDT.getText().trim();
-        String matKhau = new String(txtMatKhau.getPassword());
-        String xacNhanMK = new String(txtXacNhanMatKhau.getPassword());
+    KetQuaDangKy ketQua = taiKhoanController.dangKyDocGiaNgoai(
+            hoTen,
+            cccd,
+            sdt,
+            matKhau,
+            xacNhanMK
+    );
 
-        if (hoTen.isEmpty() || cccd.isEmpty() || sdt.isEmpty() || matKhau.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!");
-            return;
-        }
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
 
-        if (!matKhau.equals(xacNhanMK)) {
-            JOptionPane.showMessageDialog(this, "Mật khẩu xác nhận không trùng khớp!");
-            return;
-        }
-
-        con = utils.DatabaseHelper.getConnection();
-
-        // Kiểm tra trùng tài khoản trong TaiKhoan
-        String checkSql = "SELECT * FROM TaiKhoan WHERE ten_dang_nhap = ?";
-        java.sql.PreparedStatement checkStmt = con.prepareStatement(checkSql);
-        checkStmt.setString(1, cccd);
-
-        java.sql.ResultSet rs = checkStmt.executeQuery();
-
-        if (rs.next()) {
-            JOptionPane.showMessageDialog(this, "Số CCCD này đã được đăng ký trong hệ thống!");
-            rs.close();
-            checkStmt.close();
-            con.close();
-            return;
-        }
-
-        rs.close();
-        checkStmt.close();
-
-        // Bắt đầu transaction
-        con.setAutoCommit(false);
-
-        // 1. Insert vào TaiKhoan
-        String insertTaiKhoanSql = "INSERT INTO TaiKhoan "
-                + "(ten_dang_nhap, mat_khau, ho_ten, cccd, so_dien_thoai, vai_tro, trang_thai_tai_khoan) "
-                + "VALUES (?, ?, ?, ?, ?, ?, ?)";
-
-        java.sql.PreparedStatement insertTaiKhoanStmt = con.prepareStatement(insertTaiKhoanSql);
-
-        insertTaiKhoanStmt.setString(1, cccd);
-        insertTaiKhoanStmt.setString(2, matKhau);
-        insertTaiKhoanStmt.setString(3, hoTen);
-        insertTaiKhoanStmt.setString(4, cccd);
-        insertTaiKhoanStmt.setString(5, sdt);
-        insertTaiKhoanStmt.setString(6, "Độc giả ngoài");
-        insertTaiKhoanStmt.setString(7, "Chờ duyệt");
-
-        int resultTaiKhoan = insertTaiKhoanStmt.executeUpdate();
-
-        // 2. Insert vào DocGiaNgoai
-        String insertDocGiaNgoaiSql = "INSERT INTO DocGiaNgoai "
-                + "(ten_dang_nhap, cccd, so_dien_thoai, tien_coc, ghi_chu) "
-                + "VALUES (?, ?, ?, ?, ?)";
-
-        java.sql.PreparedStatement insertDocGiaNgoaiStmt = con.prepareStatement(insertDocGiaNgoaiSql);
-
-        insertDocGiaNgoaiStmt.setString(1, cccd);
-        insertDocGiaNgoaiStmt.setString(2, cccd);
-        insertDocGiaNgoaiStmt.setString(3, sdt);
-        insertDocGiaNgoaiStmt.setBigDecimal(4, new java.math.BigDecimal("0"));
-        insertDocGiaNgoaiStmt.setString(5, "Đăng ký online - chờ thủ thư duyệt và thu cọc");
-
-        int resultDocGiaNgoai = insertDocGiaNgoaiStmt.executeUpdate();
-
-        if (resultTaiKhoan > 0 && resultDocGiaNgoai > 0) {
-            con.commit();
-
-            JOptionPane.showMessageDialog(this,
-                    "Đăng ký thành công!\n"
-                    + "Trạng thái: CHỜ DUYỆT.\n"
-                    + "Vui lòng mang CCCD và tiền cọc đến quầy Thủ thư để kích hoạt tài khoản."
-            );
-
-            xoaForm();
-            main.moManHinhDangNhapAnToan();
-        } else {
-            con.rollback();
-            JOptionPane.showMessageDialog(this, "Đăng ký thất bại, dữ liệu chưa được lưu!");
-        }
-
-        insertDocGiaNgoaiStmt.close();
-        insertTaiKhoanStmt.close();
-        con.setAutoCommit(true);
-        con.close();
-
-    } catch (Exception e) {
-        e.printStackTrace();
-
-        try {
-            if (con != null) {
-                con.rollback();
-                con.close();
-            }
-        } catch (Exception rollbackEx) {
-            rollbackEx.printStackTrace();
-        }
-
-        JOptionPane.showMessageDialog(this, "Đã xảy ra lỗi trong quá trình đăng ký: " + e.getMessage());
+    if (ketQua.isThanhCong()) {
+        xoaForm();
+        main.moManHinhDangNhapAnToan();
     }
 }
 
