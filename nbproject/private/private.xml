@@ -8,6 +8,16 @@
             <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/views/MuonTraSachPnl.java</file>
             <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/views/QuanLyPhieuPhatPnl.java</file>
             <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/views/ThongKeBaoCaoPnl.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/controllers/AuthController.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/controllers/TaiKhoanController.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dto/KetQuaDangKy.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dao/TaiKhoanDAO.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/views/DangKyPnl.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dto/DocGiaDTO.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dto/KetQuaXuLy.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dao/DocGiaDAO.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/controllers/QuanLyDocGiaController.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/views/QuanLyDocGiaPnl.java</file>
         </group>
     </open-files>
 </project-private>

@@ -3,6 +3,10 @@ package views;
 import components.ModernButton;
 import components.ModernTextField;
 import components.RoundedPanel;
+import controllers.QuanLyDocGiaController;
+import dto.DocGiaDTO;
+import dto.KetQuaXuLy;
+import java.util.List;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -29,6 +33,8 @@ public class QuanLyDocGiaPnl extends JPanel {
     private ModernButton btnMoKhoa;
 
     private String cheDo = "ALL";
+    
+    private final QuanLyDocGiaController quanLyDocGiaController = new QuanLyDocGiaController();
 
     public QuanLyDocGiaPnl() {
         buildUI();
@@ -222,312 +228,142 @@ public class QuanLyDocGiaPnl extends JPanel {
         tblDocGia.getColumnModel().getColumn(7).setPreferredWidth(160);
     }
 
-    private String layDieuKienCheDo() {
-        if ("DANG_HOAT_DONG".equals(cheDo)) {
-            return " AND tk.trang_thai_tai_khoan = N'Đang hoạt động' ";
-        }
-
-        if ("CHO_DUYET".equals(cheDo)) {
-            return " AND tk.trang_thai_tai_khoan = N'Chờ duyệt' "
-                    + " AND tk.vai_tro = N'Độc giả ngoài' ";
-        }
-
-        if ("BI_KHOA".equals(cheDo)) {
-            return " AND tk.trang_thai_tai_khoan = N'Bị khóa' ";
-        }
-
-        return "";
-    }
 
     private void taiDuLieuDocGia() {
-        DefaultTableModel model = (DefaultTableModel) tblDocGia.getModel();
-        model.setRowCount(0);
+    try {
+        List<DocGiaDTO> danhSach = quanLyDocGiaController.layDanhSachDocGia(cheDo);
+        doDanhSachLenBang(danhSach);
 
-        try {
-            java.sql.Connection con = utils.DatabaseHelper.getConnection();
-
-            String sql = "SELECT "
-                    + "tk.ten_dang_nhap, "
-                    + "tk.ho_ten, "
-                    + "tk.so_dien_thoai, "
-                    + "tk.vai_tro, "
-                    + "tk.trang_thai_tai_khoan, "
-                    + "dgn.tien_coc, "
-                    + "dgn.ngay_dang_ky, "
-                    + "dgn.ngay_kich_hoat "
-                    + "FROM TaiKhoan tk "
-                    + "LEFT JOIN DocGiaNgoai dgn ON tk.ten_dang_nhap = dgn.ten_dang_nhap "
-                    + "WHERE tk.vai_tro <> N'Thủ thư' "
-                    + layDieuKienCheDo()
-                    + "ORDER BY tk.vai_tro, tk.trang_thai_tai_khoan, tk.ho_ten";
-
-            java.sql.PreparedStatement pstmt = con.prepareStatement(sql);
-            java.sql.ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getString("ten_dang_nhap"),
-                    rs.getString("ho_ten"),
-                    rs.getString("so_dien_thoai"),
-                    rs.getString("vai_tro"),
-                    rs.getString("trang_thai_tai_khoan"),
-                    rs.getBigDecimal("tien_coc"),
-                    rs.getTimestamp("ngay_dang_ky"),
-                    rs.getTimestamp("ngay_kich_hoat")
-                });
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu độc giả: " + e.getMessage());
-        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu độc giả: " + e.getMessage());
     }
+}
 
     private void timKiemDocGia() {
-        String tuKhoa = txtTimKiem.getText().trim();
+    String tuKhoa = txtTimKiem.getText().trim();
 
-        if (tuKhoa.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập từ khóa tìm kiếm!");
-            return;
-        }
-
-        DefaultTableModel model = (DefaultTableModel) tblDocGia.getModel();
-        model.setRowCount(0);
-
-        try {
-            java.sql.Connection con = utils.DatabaseHelper.getConnection();
-
-            String sql = "SELECT "
-                    + "tk.ten_dang_nhap, "
-                    + "tk.ho_ten, "
-                    + "tk.so_dien_thoai, "
-                    + "tk.vai_tro, "
-                    + "tk.trang_thai_tai_khoan, "
-                    + "dgn.tien_coc, "
-                    + "dgn.ngay_dang_ky, "
-                    + "dgn.ngay_kich_hoat "
-                    + "FROM TaiKhoan tk "
-                    + "LEFT JOIN DocGiaNgoai dgn ON tk.ten_dang_nhap = dgn.ten_dang_nhap "
-                    + "WHERE tk.vai_tro <> N'Thủ thư' "
-                    + layDieuKienCheDo()
-                    + "AND (tk.ten_dang_nhap LIKE ? "
-                    + "OR tk.ho_ten LIKE ? "
-                    + "OR tk.so_dien_thoai LIKE ? "
-                    + "OR tk.vai_tro LIKE ? "
-                    + "OR tk.trang_thai_tai_khoan LIKE ?) "
-                    + "ORDER BY tk.vai_tro, tk.trang_thai_tai_khoan, tk.ho_ten";
-
-            java.sql.PreparedStatement pstmt = con.prepareStatement(sql);
-
-            String keyword = "%" + tuKhoa + "%";
-            pstmt.setString(1, keyword);
-            pstmt.setString(2, keyword);
-            pstmt.setString(3, keyword);
-            pstmt.setString(4, keyword);
-            pstmt.setString(5, keyword);
-
-            java.sql.ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getString("ten_dang_nhap"),
-                    rs.getString("ho_ten"),
-                    rs.getString("so_dien_thoai"),
-                    rs.getString("vai_tro"),
-                    rs.getString("trang_thai_tai_khoan"),
-                    rs.getBigDecimal("tien_coc"),
-                    rs.getTimestamp("ngay_dang_ky"),
-                    rs.getTimestamp("ngay_kich_hoat")
-                });
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm độc giả: " + e.getMessage());
-        }
+    if (tuKhoa.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Vui lòng nhập từ khóa tìm kiếm!");
+        return;
     }
+
+    try {
+        List<DocGiaDTO> danhSach = quanLyDocGiaController.timKiemDocGia(cheDo, tuKhoa);
+        doDanhSachLenBang(danhSach);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm độc giả: " + e.getMessage());
+    }
+}
 
     private void duyetVaThuCoc() {
-        int selectedRow = tblDocGia.getSelectedRow();
+    int selectedRow = tblDocGia.getSelectedRow();
 
-        if (selectedRow < 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn một tài khoản cần duyệt!");
-            return;
-        }
-
-        DefaultTableModel model = (DefaultTableModel) tblDocGia.getModel();
-
-        String tenDangNhap = String.valueOf(model.getValueAt(selectedRow, 0));
-        String vaiTro = String.valueOf(model.getValueAt(selectedRow, 3));
-        String trangThai = String.valueOf(model.getValueAt(selectedRow, 4));
-
-        if (!vaiTro.equalsIgnoreCase("Độc giả ngoài")) {
-            JOptionPane.showMessageDialog(this, "Chỉ tài khoản Độc giả ngoài mới cần duyệt và thu cọc!");
-            return;
-        }
-
-        if (!trangThai.equalsIgnoreCase("Chờ duyệt")) {
-            JOptionPane.showMessageDialog(this, "Chỉ có thể duyệt tài khoản đang ở trạng thái Chờ duyệt!");
-            return;
-        }
-
-        String input = JOptionPane.showInputDialog(
-                this,
-                "Nhập số tiền cọc đã thu từ độc giả ngoài:",
-                "Duyệt tài khoản & thu cọc",
-                JOptionPane.PLAIN_MESSAGE
-        );
-
-        if (input == null) {
-            return;
-        }
-
-        input = input.trim();
-
-        if (input.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập số tiền cọc!");
-            return;
-        }
-
-        BigDecimal tienCoc;
-
-        try {
-            tienCoc = new BigDecimal(input);
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Số tiền cọc không hợp lệ!");
-            return;
-        }
-
-        if (tienCoc.compareTo(BigDecimal.ZERO) <= 0) {
-            JOptionPane.showMessageDialog(this, "Tiền cọc phải lớn hơn 0!");
-            return;
-        }
-
-        java.sql.Connection con = null;
-
-        try {
-            con = utils.DatabaseHelper.getConnection();
-            con.setAutoCommit(false);
-
-            String updateTaiKhoanSql = "UPDATE TaiKhoan "
-                    + "SET trang_thai_tai_khoan = N'Đang hoạt động' "
-                    + "WHERE ten_dang_nhap = ?";
-
-            java.sql.PreparedStatement updateTaiKhoanStmt = con.prepareStatement(updateTaiKhoanSql);
-            updateTaiKhoanStmt.setString(1, tenDangNhap);
-
-            int resultTaiKhoan = updateTaiKhoanStmt.executeUpdate();
-
-            String updateDocGiaNgoaiSql = "UPDATE DocGiaNgoai "
-                    + "SET tien_coc = ?, ngay_kich_hoat = GETDATE(), ghi_chu = ? "
-                    + "WHERE ten_dang_nhap = ?";
-
-            java.sql.PreparedStatement updateDocGiaNgoaiStmt = con.prepareStatement(updateDocGiaNgoaiSql);
-            updateDocGiaNgoaiStmt.setBigDecimal(1, tienCoc);
-            updateDocGiaNgoaiStmt.setString(2, "Đã thu cọc và kích hoạt tài khoản");
-            updateDocGiaNgoaiStmt.setString(3, tenDangNhap);
-
-            int resultDocGiaNgoai = updateDocGiaNgoaiStmt.executeUpdate();
-
-            if (resultTaiKhoan > 0 && resultDocGiaNgoai > 0) {
-                con.commit();
-
-                JOptionPane.showMessageDialog(
-                        this,
-                        "Duyệt tài khoản thành công!\n"
-                        + "Đã thu cọc: " + tienCoc + " VNĐ"
-                );
-
-                taiDuLieuDocGia();
-            } else {
-                con.rollback();
-                JOptionPane.showMessageDialog(this, "Duyệt thất bại! Không tìm thấy đủ dữ liệu tài khoản.");
-            }
-
-            updateDocGiaNgoaiStmt.close();
-            updateTaiKhoanStmt.close();
-
-            con.setAutoCommit(true);
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-
-            try {
-                if (con != null) {
-                    con.rollback();
-                    con.close();
-                }
-            } catch (Exception rollbackEx) {
-                rollbackEx.printStackTrace();
-            }
-
-            JOptionPane.showMessageDialog(this, "Lỗi khi duyệt tài khoản: " + e.getMessage());
-        }
+    if (selectedRow < 0) {
+        JOptionPane.showMessageDialog(this, "Vui lòng chọn một tài khoản cần duyệt!");
+        return;
     }
+
+    DefaultTableModel model = (DefaultTableModel) tblDocGia.getModel();
+
+    String tenDangNhap = String.valueOf(model.getValueAt(selectedRow, 0));
+    String vaiTro = String.valueOf(model.getValueAt(selectedRow, 3));
+    String trangThai = String.valueOf(model.getValueAt(selectedRow, 4));
+
+    String input = JOptionPane.showInputDialog(
+            this,
+            "Nhập số tiền cọc đã thu từ độc giả ngoài:",
+            "Duyệt tài khoản & thu cọc",
+            JOptionPane.PLAIN_MESSAGE
+    );
+
+    if (input == null) {
+        return;
+    }
+
+    input = input.trim();
+
+    if (input.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Vui lòng nhập số tiền cọc!");
+        return;
+    }
+
+    BigDecimal tienCoc;
+
+    try {
+        tienCoc = new BigDecimal(input.replace(",", ""));
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "Số tiền cọc không hợp lệ!");
+        return;
+    }
+
+    KetQuaXuLy ketQua = quanLyDocGiaController.duyetVaThuCoc(
+            tenDangNhap,
+            vaiTro,
+            trangThai,
+            tienCoc
+    );
+
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
+
+    if (ketQua.isThanhCong()) {
+        taiDuLieuDocGia();
+    }
+}
 
     private void capNhatTrangThaiTaiKhoan(String trangThaiMoi) {
-        int selectedRow = tblDocGia.getSelectedRow();
+    int selectedRow = tblDocGia.getSelectedRow();
 
-        if (selectedRow < 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn một tài khoản trong bảng!");
-            return;
-        }
-
-        DefaultTableModel model = (DefaultTableModel) tblDocGia.getModel();
-
-        String tenDangNhap = String.valueOf(model.getValueAt(selectedRow, 0));
-        String trangThaiHienTai = String.valueOf(model.getValueAt(selectedRow, 4));
-
-        if (trangThaiHienTai.equalsIgnoreCase(trangThaiMoi)) {
-            JOptionPane.showMessageDialog(this, "Tài khoản đã ở trạng thái: " + trangThaiMoi);
-            return;
-        }
-
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Bạn có chắc muốn cập nhật tài khoản này thành: " + trangThaiMoi + "?",
-                "Xác nhận cập nhật",
-                JOptionPane.YES_NO_OPTION
-        );
-
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        try {
-            java.sql.Connection con = utils.DatabaseHelper.getConnection();
-
-            String sql = "UPDATE TaiKhoan "
-                    + "SET trang_thai_tai_khoan = ? "
-                    + "WHERE ten_dang_nhap = ?";
-
-            java.sql.PreparedStatement pstmt = con.prepareStatement(sql);
-
-            pstmt.setString(1, trangThaiMoi);
-            pstmt.setString(2, tenDangNhap);
-
-            int result = pstmt.executeUpdate();
-
-            if (result > 0) {
-                JOptionPane.showMessageDialog(this, "Cập nhật trạng thái tài khoản thành công!");
-                taiDuLieuDocGia();
-            }
-
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật trạng thái: " + e.getMessage());
-        }
+    if (selectedRow < 0) {
+        JOptionPane.showMessageDialog(this, "Vui lòng chọn một tài khoản trong bảng!");
+        return;
     }
+
+    DefaultTableModel model = (DefaultTableModel) tblDocGia.getModel();
+
+    String tenDangNhap = String.valueOf(model.getValueAt(selectedRow, 0));
+    String trangThaiHienTai = String.valueOf(model.getValueAt(selectedRow, 4));
+
+    int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Bạn có chắc muốn cập nhật tài khoản này thành: " + trangThaiMoi + "?",
+            "Xác nhận cập nhật",
+            JOptionPane.YES_NO_OPTION
+    );
+
+    if (confirm != JOptionPane.YES_OPTION) {
+        return;
+    }
+
+    KetQuaXuLy ketQua = quanLyDocGiaController.capNhatTrangThaiTaiKhoan(
+            tenDangNhap,
+            trangThaiHienTai,
+            trangThaiMoi
+    );
+
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
+
+    if (ketQua.isThanhCong()) {
+        taiDuLieuDocGia();
+    }
+}
+    private void doDanhSachLenBang(List<DocGiaDTO> danhSach) {
+    DefaultTableModel model = (DefaultTableModel) tblDocGia.getModel();
+    model.setRowCount(0);
+
+    for (DocGiaDTO dg : danhSach) {
+        model.addRow(new Object[]{
+            dg.getTenDangNhap(),
+            dg.getHoTen(),
+            dg.getSoDienThoai(),
+            dg.getVaiTro(),
+            dg.getTrangThaiTaiKhoan(),
+            dg.getTienCoc(),
+            dg.getNgayDangKy(),
+            dg.getNgayKichHoat()
+        });
+    }
+}
 }
