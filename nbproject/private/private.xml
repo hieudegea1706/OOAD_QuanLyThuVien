@@ -18,6 +18,11 @@
             <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dao/DocGiaDAO.java</file>
             <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/controllers/QuanLyDocGiaController.java</file>
             <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/views/QuanLyDocGiaPnl.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dto/DocGiaMuonDTO.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dto/SachMuonDTO.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dao/MuonTraDAO.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/controllers/MuonTraController.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dto/ThongTinTraSachDTO.java</file>
         </group>
     </open-files>
 </project-private>

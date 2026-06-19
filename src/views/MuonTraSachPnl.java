@@ -3,6 +3,13 @@ package views;
 import components.ModernButton;
 import components.ModernTextField;
 import components.RoundedPanel;
+import controllers.MuonTraController;
+import dto.DocGiaMuonDTO;
+import dto.KetQuaXuLy;
+import dto.SachMuonDTO;
+import dto.ThongTinTraSachDTO;
+import java.util.ArrayList;
+import java.util.List;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -10,7 +17,6 @@ import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Statement;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
@@ -25,6 +31,8 @@ import utils.UITheme;
 import javax.swing.JComboBox;
 
 public class MuonTraSachPnl extends JPanel {
+    
+    private final MuonTraController muonTraController = new MuonTraController();
 
     private ModernTextField txtTenDangNhap;
     private ModernTextField txtMaCaBiet;
@@ -494,11 +502,6 @@ private JPanel buildTraSachLeftPanel() {
 private void timSachDangMuonDeTra() {
     String maCaBiet = txtMaCaBietTra.getText().trim();
 
-    if (maCaBiet.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "Vui lòng nhập mã cá biệt cuốn sách cần trả!");
-        return;
-    }
-
     DefaultTableModel model = (DefaultTableModel) tblThongTinTra.getModel();
     model.setRowCount(0);
 
@@ -507,71 +510,32 @@ private void timSachDangMuonDeTra() {
     tenDangNhapDangTra = null;
     soNgayQuaHanDangTra = 0;
 
-    try {
-        Connection con = DatabaseHelper.getConnection();
+    ThongTinTraSachDTO ketQua = muonTraController.timSachDangMuonDeTra(maCaBiet);
 
-        String sql = "SELECT "
-                + "pm.id_phieu_muon, "
-                + "pm.ten_dang_nhap, "
-                + "tk.ho_ten, "
-                + "ct.id_ca_biet, "
-                + "ds.ten_sach, "
-                + "pm.ngay_muon, "
-                + "pm.han_tra, "
-                + "ct.trang_thai_chi_tiet, "
-                + "CASE WHEN DATEDIFF(DAY, pm.han_tra, GETDATE()) > 0 "
-                + "THEN DATEDIFF(DAY, pm.han_tra, GETDATE()) ELSE 0 END AS so_ngay_qua_han "
-                + "FROM ChiTietPhieuMuon ct "
-                + "JOIN PhieuMuon pm ON ct.id_phieu_muon = pm.id_phieu_muon "
-                + "JOIN TaiKhoan tk ON pm.ten_dang_nhap = tk.ten_dang_nhap "
-                + "JOIN CuonSach cs ON ct.id_ca_biet = cs.id_ca_biet "
-                + "JOIN DauSach ds ON cs.id_dau_sach = ds.id_dau_sach "
-                + "WHERE ct.id_ca_biet = ? "
-                + "AND ct.trang_thai_chi_tiet = N'Đang mượn'";
+    if (!ketQua.isTimThay()) {
+        JOptionPane.showMessageDialog(this, ketQua.getThongBao());
+        return;
+    }
 
-        PreparedStatement pstmt = con.prepareStatement(sql);
-        pstmt.setString(1, maCaBiet);
+    idPhieuMuonDangTra = ketQua.getIdPhieuMuon();
+    maCaBietDangTra = ketQua.getIdCaBiet();
+    tenDangNhapDangTra = ketQua.getTenDangNhap();
+    soNgayQuaHanDangTra = ketQua.getSoNgayQuaHan();
 
-        ResultSet rs = pstmt.executeQuery();
+    model.addRow(new Object[]{
+        ketQua.getIdPhieuMuon(),
+        ketQua.getTenDangNhap(),
+        ketQua.getHoTen(),
+        ketQua.getIdCaBiet(),
+        ketQua.getTenSach(),
+        ketQua.getNgayMuon(),
+        ketQua.getHanTra(),
+        ketQua.getSoNgayQuaHan(),
+        ketQua.getTrangThaiChiTiet()
+    });
 
-        if (rs.next()) {
-            idPhieuMuonDangTra = rs.getInt("id_phieu_muon");
-            maCaBietDangTra = rs.getString("id_ca_biet");
-            tenDangNhapDangTra = rs.getString("ten_dang_nhap");
-            soNgayQuaHanDangTra = rs.getInt("so_ngay_qua_han");
-
-            model.addRow(new Object[]{
-                rs.getInt("id_phieu_muon"),
-                rs.getString("ten_dang_nhap"),
-                rs.getString("ho_ten"),
-                rs.getString("id_ca_biet"),
-                rs.getString("ten_sach"),
-                rs.getTimestamp("ngay_muon"),
-                rs.getTimestamp("han_tra"),
-                soNgayQuaHanDangTra,
-                rs.getString("trang_thai_chi_tiet")
-            });
-
-            if (soNgayQuaHanDangTra > 0) {
-                JOptionPane.showMessageDialog(this,
-                        "Sách đang quá hạn " + soNgayQuaHanDangTra + " ngày."
-                        + "Khi xử lý trả, hệ thống sẽ lập phiếu phạt."
-                );
-            }
-        } else {
-            JOptionPane.showMessageDialog(this,
-                    "Không tìm thấy cuốn sách đang mượn với mã: " + maCaBiet
-                    + "Có thể sách chưa được mượn hoặc đã được trả."
-            );
-        }
-
-        rs.close();
-        pstmt.close();
-        con.close();
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        JOptionPane.showMessageDialog(this, "Lỗi khi tìm sách đang mượn: " + e.getMessage());
+    if (ketQua.getSoNgayQuaHan() > 0) {
+        JOptionPane.showMessageDialog(this, ketQua.getThongBao());
     }
 }
 
@@ -584,25 +548,16 @@ private void xuLyTraSach() {
     String tinhTrangTra = String.valueOf(cboTinhTrangTra.getSelectedItem());
     String ghiChuTra = txtGhiChuTra.getText().trim();
 
-    boolean quaHan = soNgayQuaHanDangTra > 0;
-    boolean coHuHong = !tinhTrangTra.equalsIgnoreCase("Tốt");
-
-    BigDecimal tienPhat = tinhTienPhat(soNgayQuaHanDangTra, tinhTrangTra);
-    String loaiViPham = taoLoaiViPham(quaHan, tinhTrangTra);
-    String moTaViPham = taoMoTaViPham(soNgayQuaHanDangTra, tinhTrangTra, ghiChuTra);
-
-    String thongBao = "Xác nhận trả cuốn sách " + maCaBietDangTra
-            + " cho phiếu mượn " + idPhieuMuonDangTra + "?";
-
-    if (quaHan || coHuHong) {
-        thongBao += "Phát hiện vi phạm: " + loaiViPham
-                + "Số tiền phạt dự kiến: " + tienPhat + " VNĐ"
-                + "Hệ thống sẽ lập phiếu phạt.";
-    }
+    String thongBaoXacNhan = muonTraController.taoThongBaoXacNhanTra(
+            idPhieuMuonDangTra,
+            maCaBietDangTra,
+            soNgayQuaHanDangTra,
+            tinhTrangTra
+    );
 
     int confirm = JOptionPane.showConfirmDialog(
             this,
-            thongBao,
+            thongBaoXacNhan,
             "Xác nhận xử lý trả sách",
             JOptionPane.YES_NO_OPTION
     );
@@ -611,158 +566,20 @@ private void xuLyTraSach() {
         return;
     }
 
-    Connection con = null;
+    KetQuaXuLy ketQua = muonTraController.xuLyTraSach(
+            idPhieuMuonDangTra,
+            maCaBietDangTra,
+            tenDangNhapDangTra,
+            soNgayQuaHanDangTra,
+            tinhTrangTra,
+            ghiChuTra
+    );
 
-    try {
-        con = DatabaseHelper.getConnection();
-        con.setAutoCommit(false);
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
 
-        String updateChiTietSql = "UPDATE ChiTietPhieuMuon "
-                + "SET trang_thai_chi_tiet = N'Đã trả', "
-                + "ngay_tra_thuc_te = GETDATE(), "
-                + "ghi_chu = ? "
-                + "WHERE id_phieu_muon = ? "
-                + "AND id_ca_biet = ? "
-                + "AND trang_thai_chi_tiet = N'Đang mượn'";
-
-        PreparedStatement updateChiTietStmt = con.prepareStatement(updateChiTietSql);
-        updateChiTietStmt.setString(1, ghiChuTra.isEmpty() ? "Đã xử lý trả sách" : ghiChuTra);
-        updateChiTietStmt.setInt(2, idPhieuMuonDangTra);
-        updateChiTietStmt.setString(3, maCaBietDangTra);
-
-        int resultChiTiet = updateChiTietStmt.executeUpdate();
-
-        if (resultChiTiet <= 0) {
-            con.rollback();
-            JOptionPane.showMessageDialog(this, "Không thể cập nhật chi tiết phiếu mượn!");
-            updateChiTietStmt.close();
-            con.close();
-            return;
-        }
-
-        if (quaHan || coHuHong) {
-            String insertPhatSql = "INSERT INTO PhieuPhat "
-                    + "(id_phieu_muon, id_ca_biet, ten_dang_nhap, loai_vi_pham, "
-                    + "so_ngay_qua_han, mo_ta_vi_pham, so_tien_phat, trang_thai_thanh_toan, ghi_chu) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, N'Chưa thanh toán', ?)";
-
-            PreparedStatement insertPhatStmt = con.prepareStatement(insertPhatSql);
-            insertPhatStmt.setInt(1, idPhieuMuonDangTra);
-            insertPhatStmt.setString(2, maCaBietDangTra);
-            insertPhatStmt.setString(3, tenDangNhapDangTra);
-            insertPhatStmt.setString(4, loaiViPham);
-            insertPhatStmt.setInt(5, soNgayQuaHanDangTra);
-            insertPhatStmt.setString(6, moTaViPham);
-            insertPhatStmt.setBigDecimal(7, tienPhat);
-            insertPhatStmt.setString(8, "Phiếu phạt phát sinh khi xử lý trả sách");
-
-            insertPhatStmt.executeUpdate();
-            insertPhatStmt.close();
-        }
-
-        String trangThaiLuuThongMoi;
-
-        if (tinhTrangTra.equalsIgnoreCase("Tốt")) {
-            trangThaiLuuThongMoi = "Sẵn sàng";
-        } else if (tinhTrangTra.equalsIgnoreCase("Rách nhẹ")) {
-            trangThaiLuuThongMoi = "Sẵn sàng";
-        } else if (tinhTrangTra.equalsIgnoreCase("Hư hỏng")) {
-            trangThaiLuuThongMoi = "Tạm giữ xử lý";
-        } else {
-            trangThaiLuuThongMoi = "Mất";
-        }
-
-        String updateCuonSachSql = "UPDATE CuonSach "
-                + "SET trang_thai_luu_thong = ?, "
-                + "tinh_trang_vat_ly = ?, "
-                + "ghi_chu = ? "
-                + "WHERE id_ca_biet = ?";
-
-        PreparedStatement updateCuonSachStmt = con.prepareStatement(updateCuonSachSql);
-        updateCuonSachStmt.setString(1, trangThaiLuuThongMoi);
-        updateCuonSachStmt.setString(2, tinhTrangTra);
-        updateCuonSachStmt.setString(3, ghiChuTra.isEmpty() ? "Cập nhật khi trả sách" : ghiChuTra);
-        updateCuonSachStmt.setString(4, maCaBietDangTra);
-
-        int resultCuonSach = updateCuonSachStmt.executeUpdate();
-
-        if (resultCuonSach <= 0) {
-            con.rollback();
-            JOptionPane.showMessageDialog(this, "Không thể cập nhật trạng thái cuốn sách!");
-            updateChiTietStmt.close();
-            updateCuonSachStmt.close();
-            con.close();
-            return;
-        }
-
-        String countDangMuonSql = "SELECT COUNT(*) AS so_sach_dang_muon "
-                + "FROM ChiTietPhieuMuon "
-                + "WHERE id_phieu_muon = ? "
-                + "AND trang_thai_chi_tiet = N'Đang mượn'";
-
-        PreparedStatement countStmt = con.prepareStatement(countDangMuonSql);
-        countStmt.setInt(1, idPhieuMuonDangTra);
-
-        ResultSet rs = countStmt.executeQuery();
-
-        int soSachDangMuon = 0;
-
-        if (rs.next()) {
-            soSachDangMuon = rs.getInt("so_sach_dang_muon");
-        }
-
-        rs.close();
-        countStmt.close();
-
-        String trangThaiPhieuMoi = soSachDangMuon == 0 ? "Đã trả" : "Đã trả một phần";
-
-        String updatePhieuSql = "UPDATE PhieuMuon "
-                + "SET trang_thai_phieu = ? "
-                + "WHERE id_phieu_muon = ?";
-
-        PreparedStatement updatePhieuStmt = con.prepareStatement(updatePhieuSql);
-        updatePhieuStmt.setString(1, trangThaiPhieuMoi);
-        updatePhieuStmt.setInt(2, idPhieuMuonDangTra);
-        updatePhieuStmt.executeUpdate();
-        updatePhieuStmt.close();
-
-        con.commit();
-
-        String message = "Trả sách thành công!"
-                + "Mã sách: " + maCaBietDangTra
-                + "Trạng thái sách mới: " + trangThaiLuuThongMoi
-                + "Trạng thái phiếu: " + trangThaiPhieuMoi;
-
-        if (quaHan || coHuHong) {
-            message += "Đã lập phiếu phạt."
-                    + "Loại vi phạm: " + loaiViPham
-                    + "Tiền phạt: " + tienPhat + " VNĐ";
-        }
-
-        JOptionPane.showMessageDialog(this, message);
-
-        updateChiTietStmt.close();
-        updateCuonSachStmt.close();
-
-        con.setAutoCommit(true);
-        con.close();
-
+    if (ketQua.isThanhCong()) {
         lamMoiTraSach();
         taiDanhSachPhieuMuon();
-
-    } catch (Exception e) {
-        e.printStackTrace();
-
-        try {
-            if (con != null) {
-                con.rollback();
-                con.close();
-            }
-        } catch (Exception rollbackEx) {
-            rollbackEx.printStackTrace();
-        }
-
-        JOptionPane.showMessageDialog(this, "Lỗi khi xử lý trả sách: " + e.getMessage());
     }
 }
 
@@ -844,143 +661,73 @@ private JPanel buildTraSachInfoPanel() {
     // =====================================================
 
     private void kiemTraDocGia() {
-        String tenDangNhap = txtTenDangNhap.getText().trim();
+    String tenDangNhap = txtTenDangNhap.getText().trim();
 
-        if (tenDangNhap.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập tên đăng nhập độc giả!");
-            return;
-        }
+    DocGiaMuonDTO ketQua = muonTraController.kiemTraDocGia(tenDangNhap);
 
-        try {
-            Connection con = DatabaseHelper.getConnection();
+    if (ketQua.isHopLe()) {
+        docGiaHopLe = true;
+        docGiaDangChon = ketQua.getTenDangNhap();
 
-            String sql = "SELECT ten_dang_nhap, ho_ten, vai_tro, trang_thai_tai_khoan "
-                    + "FROM TaiKhoan "
-                    + "WHERE ten_dang_nhap = ? AND vai_tro <> N'Thủ thư'";
+        lblThongTinDocGia.setText(
+                "<html><span style='color:green;'>"
+                + ketQua.getThongBao()
+                + "</span></html>"
+        );
+    } else {
+        docGiaHopLe = false;
+        docGiaDangChon = null;
 
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            pstmt.setString(1, tenDangNhap);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            if (rs.next()) {
-                String hoTen = rs.getString("ho_ten");
-                String vaiTro = rs.getString("vai_tro");
-                String trangThai = rs.getString("trang_thai_tai_khoan");
-
-                if (!trangThai.equalsIgnoreCase("Đang hoạt động")) {
-                    docGiaHopLe = false;
-                    docGiaDangChon = null;
-
-                    lblThongTinDocGia.setText("<html><span style='color:red;'>Tài khoản chưa được phép mượn. Trạng thái: "
-                            + trangThai + "</span></html>");
-                } else {
-                    docGiaHopLe = true;
-                    docGiaDangChon = tenDangNhap;
-
-                    lblThongTinDocGia.setText("<html><span style='color:green;'>Hợp lệ: "
-                            + hoTen + " - " + vaiTro + "</span></html>");
-                }
-            } else {
-                docGiaHopLe = false;
-                docGiaDangChon = null;
-                lblThongTinDocGia.setText("<html><span style='color:red;'>Không tìm thấy độc giả.</span></html>");
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi kiểm tra độc giả: " + e.getMessage());
-        }
+        lblThongTinDocGia.setText(
+                "<html><span style='color:red;'>"
+                + ketQua.getThongBao()
+                + "</span></html>"
+        );
     }
+}
 
     private void themSachVaoPhieuTam() {
-        String maCaBiet = txtMaCaBiet.getText().trim();
+    String maCaBiet = txtMaCaBiet.getText().trim();
 
-        if (maCaBiet.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập mã cá biệt cuốn sách!");
+    DefaultTableModel model = (DefaultTableModel) tblSachMuonTam.getModel();
+
+    for (int i = 0; i < model.getRowCount(); i++) {
+        String maTrongBang = String.valueOf(model.getValueAt(i, 0));
+
+        if (maTrongBang.equalsIgnoreCase(maCaBiet)) {
+            JOptionPane.showMessageDialog(this, "Cuốn sách này đã có trong phiếu mượn tạm!");
             return;
         }
-
-        DefaultTableModel model = (DefaultTableModel) tblSachMuonTam.getModel();
-
-        for (int i = 0; i < model.getRowCount(); i++) {
-            String maTrongBang = String.valueOf(model.getValueAt(i, 0));
-            if (maTrongBang.equalsIgnoreCase(maCaBiet)) {
-                JOptionPane.showMessageDialog(this, "Cuốn sách này đã có trong phiếu mượn tạm!");
-                return;
-            }
-        }
-
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "SELECT "
-                    + "cs.id_ca_biet, "
-                    + "cs.id_dau_sach, "
-                    + "ds.ten_sach, "
-                    + "cs.trang_thai_luu_thong, "
-                    + "cs.tinh_trang_vat_ly, "
-                    + "cs.vi_tri_ke "
-                    + "FROM CuonSach cs "
-                    + "JOIN DauSach ds ON cs.id_dau_sach = ds.id_dau_sach "
-                    + "WHERE cs.id_ca_biet = ?";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            pstmt.setString(1, maCaBiet);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            if (rs.next()) {
-                String trangThai = rs.getString("trang_thai_luu_thong");
-                String tinhTrang = rs.getString("tinh_trang_vat_ly");
-
-                if (!trangThai.equalsIgnoreCase("Sẵn sàng")) {
-                    lblThongTinSach.setText("<html><span style='color:red;'>Không thể mượn. Trạng thái: "
-                            + trangThai + "</span></html>");
-                    rs.close();
-                    pstmt.close();
-                    con.close();
-                    return;
-                }
-
-                if (tinhTrang.equalsIgnoreCase("Hư hỏng") || tinhTrang.equalsIgnoreCase("Mất")) {
-                    lblThongTinSach.setText("<html><span style='color:red;'>Không thể mượn. Tình trạng vật lý: "
-                            + tinhTrang + "</span></html>");
-                    rs.close();
-                    pstmt.close();
-                    con.close();
-                    return;
-                }
-
-                model.addRow(new Object[]{
-                    rs.getString("id_ca_biet"),
-                    rs.getString("id_dau_sach"),
-                    rs.getString("ten_sach"),
-                    rs.getString("trang_thai_luu_thong"),
-                    rs.getString("tinh_trang_vat_ly"),
-                    rs.getString("vi_tri_ke")
-                });
-
-                lblThongTinSach.setText("<html><span style='color:green;'>Đã thêm sách vào phiếu tạm.</span></html>");
-                txtMaCaBiet.setText("");
-
-            } else {
-                lblThongTinSach.setText("<html><span style='color:red;'>Không tìm thấy cuốn sách.</span></html>");
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi kiểm tra sách: " + e.getMessage());
-        }
     }
+
+    SachMuonDTO sach = muonTraController.kiemTraSachMuon(maCaBiet);
+
+    if (!sach.isCoTheMuon()) {
+        lblThongTinSach.setText(
+                "<html><span style='color:red;'>"
+                + sach.getThongBao()
+                + "</span></html>"
+        );
+        return;
+    }
+
+    model.addRow(new Object[]{
+        sach.getIdCaBiet(),
+        sach.getIdDauSach(),
+        sach.getTenSach(),
+        sach.getTrangThaiLuuThong(),
+        sach.getTinhTrangVatLy(),
+        sach.getViTriKe()
+    });
+
+    lblThongTinSach.setText(
+            "<html><span style='color:green;'>"
+            + sach.getThongBao()
+            + "</span></html>"
+    );
+
+    txtMaCaBiet.setText("");
+}
 
     private void xoaSachTamDaChon() {
         int row = tblSachMuonTam.getSelectedRow();
@@ -995,261 +742,46 @@ private JPanel buildTraSachInfoPanel() {
     }
 
     private void lapPhieuMuon() {
-        if (!docGiaHopLe || docGiaDangChon == null) {
-            JOptionPane.showMessageDialog(this, "Vui lòng kiểm tra độc giả hợp lệ trước khi lập phiếu!");
-            return;
-        }
-
-        DefaultTableModel model = (DefaultTableModel) tblSachMuonTam.getModel();
-
-        if (model.getRowCount() == 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng thêm ít nhất một cuốn sách vào phiếu!");
-            return;
-        }
-
-        int soNgayMuon;
-
-        try {
-            soNgayMuon = Integer.parseInt(txtSoNgayMuon.getText().trim());
-        } catch (Exception e) {
-            JOptionPane.showMessageDialog(this, "Số ngày mượn phải là số nguyên!");
-            return;
-        }
-
-        if (soNgayMuon <= 0) {
-            JOptionPane.showMessageDialog(this, "Số ngày mượn phải lớn hơn 0!");
-            return;
-        }
-
-        Connection con = null;
-
-        try {
-            con = DatabaseHelper.getConnection();
-
-            // Kiểm tra hạn mức mượn theo vai trò và tiền cọc trước khi tạo phiếu.
-            // Phần này chỉ kiểm tra nghiệp vụ, không tác động bố cục giao diện.
-            if (!kiemTraHanMucMuon(con, docGiaDangChon, model.getRowCount())) {
-                con.close();
-                return;
-            }
-
-            con.setAutoCommit(false);
-
-            String insertPhieuSql = "INSERT INTO PhieuMuon "
-                    + "(ten_dang_nhap, ngay_muon, han_tra, trang_thai_phieu, ghi_chu) "
-                    + "VALUES (?, GETDATE(), DATEADD(DAY, ?, GETDATE()), N'Đang mượn', ?)";
-
-            PreparedStatement insertPhieuStmt = con.prepareStatement(insertPhieuSql, Statement.RETURN_GENERATED_KEYS);
-            insertPhieuStmt.setString(1, docGiaDangChon);
-            insertPhieuStmt.setInt(2, soNgayMuon);
-            insertPhieuStmt.setString(3, "Phiếu mượn lập từ ứng dụng thủ thư");
-
-            int resultPhieu = insertPhieuStmt.executeUpdate();
-
-            if (resultPhieu <= 0) {
-                con.rollback();
-                JOptionPane.showMessageDialog(this, "Không thể tạo phiếu mượn!");
-                insertPhieuStmt.close();
-                con.close();
-                return;
-            }
-
-            ResultSet generatedKeys = insertPhieuStmt.getGeneratedKeys();
-
-            int idPhieuMuon;
-
-            if (generatedKeys.next()) {
-                idPhieuMuon = generatedKeys.getInt(1);
-            } else {
-                con.rollback();
-                JOptionPane.showMessageDialog(this, "Không lấy được mã phiếu mượn vừa tạo!");
-                generatedKeys.close();
-                insertPhieuStmt.close();
-                con.close();
-                return;
-            }
-
-            String insertChiTietSql = "INSERT INTO ChiTietPhieuMuon "
-                    + "(id_phieu_muon, id_ca_biet, trang_thai_chi_tiet, ghi_chu) "
-                    + "VALUES (?, ?, N'Đang mượn', ?)";
-
-            String updateCuonSachSql = "UPDATE CuonSach "
-                    + "SET trang_thai_luu_thong = N'Đang cho mượn' "
-                    + "WHERE id_ca_biet = ? AND trang_thai_luu_thong = N'Sẵn sàng'";
-
-            PreparedStatement insertChiTietStmt = con.prepareStatement(insertChiTietSql);
-            PreparedStatement updateCuonSachStmt = con.prepareStatement(updateCuonSachSql);
-
-            for (int i = 0; i < model.getRowCount(); i++) {
-                String maCaBiet = String.valueOf(model.getValueAt(i, 0));
-
-                insertChiTietStmt.setInt(1, idPhieuMuon);
-                insertChiTietStmt.setString(2, maCaBiet);
-                insertChiTietStmt.setString(3, "Chi tiết phiếu mượn");
-                insertChiTietStmt.executeUpdate();
-
-                updateCuonSachStmt.setString(1, maCaBiet);
-                int updated = updateCuonSachStmt.executeUpdate();
-
-                if (updated <= 0) {
-                    con.rollback();
-                    JOptionPane.showMessageDialog(this,
-                            "Không thể cập nhật trạng thái cuốn sách: " + maCaBiet
-                            + "\nCó thể sách đã được mượn bởi phiếu khác."
-                    );
-
-                    insertChiTietStmt.close();
-                    updateCuonSachStmt.close();
-                    generatedKeys.close();
-                    insertPhieuStmt.close();
-                    con.close();
-                    return;
-                }
-            }
-
-            con.commit();
-
-            JOptionPane.showMessageDialog(this,
-                    "Lập phiếu mượn thành công!\n"
-                    + "Mã phiếu mượn: " + idPhieuMuon
-            );
-
-            insertChiTietStmt.close();
-            updateCuonSachStmt.close();
-            generatedKeys.close();
-            insertPhieuStmt.close();
-
-            con.setAutoCommit(true);
-            con.close();
-
-            lamMoiLapPhieu();
-            taiDanhSachPhieuMuon();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-
-            try {
-                if (con != null) {
-                    con.rollback();
-                    con.close();
-                }
-            } catch (Exception rollbackEx) {
-                rollbackEx.printStackTrace();
-            }
-
-            JOptionPane.showMessageDialog(this, "Lỗi khi lập phiếu mượn: " + e.getMessage());
-        }
+    if (!docGiaHopLe || docGiaDangChon == null) {
+        JOptionPane.showMessageDialog(this, "Vui lòng kiểm tra độc giả hợp lệ trước khi lập phiếu!");
+        return;
     }
 
-    private boolean kiemTraHanMucMuon(Connection con, String tenDangNhap, int soSachMuonMoi) throws Exception {
-        String sqlDocGia = "SELECT "
-                + "tk.ho_ten, "
-                + "tk.vai_tro, "
-                + "ISNULL(dgn.tien_coc, 0) AS tien_coc "
-                + "FROM TaiKhoan tk "
-                + "LEFT JOIN DocGiaNgoai dgn ON tk.ten_dang_nhap = dgn.ten_dang_nhap "
-                + "WHERE tk.ten_dang_nhap = ?";
+    DefaultTableModel model = (DefaultTableModel) tblSachMuonTam.getModel();
 
-        PreparedStatement pstmtDocGia = con.prepareStatement(sqlDocGia);
-        pstmtDocGia.setString(1, tenDangNhap);
-
-        ResultSet rsDocGia = pstmtDocGia.executeQuery();
-
-        if (!rsDocGia.next()) {
-            rsDocGia.close();
-            pstmtDocGia.close();
-
-            JOptionPane.showMessageDialog(this, "Không tìm thấy thông tin độc giả để kiểm tra hạn mức mượn!");
-            return false;
-        }
-
-        String hoTen = rsDocGia.getString("ho_ten");
-        String vaiTro = rsDocGia.getString("vai_tro");
-        BigDecimal tienCoc = rsDocGia.getBigDecimal("tien_coc");
-
-        rsDocGia.close();
-        pstmtDocGia.close();
-
-        if (tienCoc == null) {
-            tienCoc = BigDecimal.ZERO;
-        }
-
-        int hanMucMuon = tinhHanMucMuon(vaiTro, tienCoc);
-        int soSachDangMuon = demSoSachDangMuon(con, tenDangNhap);
-        int tongSauKhiMuon = soSachDangMuon + soSachMuonMoi;
-
-        if (hanMucMuon <= 0) {
-            JOptionPane.showMessageDialog(this,
-                    "Độc giả này chưa đủ điều kiện mượn sách.\n"
-                    + "Họ tên: " + hoTen + "\n"
-                    + "Vai trò: " + vaiTro + "\n"
-                    + "Tiền cọc hiện có: " + formatTien(tienCoc) + " VNĐ\n\n"
-                    + "Quy định: Độc giả ngoài cần cọc tối thiểu 100.000 VNĐ để được mượn sách."
-            );
-            return false;
-        }
-
-        if (tongSauKhiMuon > hanMucMuon) {
-            JOptionPane.showMessageDialog(this,
-                    "Không thể lập phiếu mượn vì vượt hạn mức mượn sách.\n\n"
-                    + "Độc giả: " + hoTen + "\n"
-                    + "Vai trò: " + vaiTro + "\n"
-                    + "Tiền cọc: " + formatTien(tienCoc) + " VNĐ\n"
-                    + "Hạn mức được mượn: " + hanMucMuon + " cuốn\n"
-                    + "Đang mượn hiện tại: " + soSachDangMuon + " cuốn\n"
-                    + "Số sách trong phiếu mới: " + soSachMuonMoi + " cuốn\n"
-                    + "Tổng sau khi mượn: " + tongSauKhiMuon + " cuốn"
-            );
-            return false;
-        }
-
-        return true;
+    if (model.getRowCount() == 0) {
+        JOptionPane.showMessageDialog(this, "Vui lòng thêm ít nhất một cuốn sách vào phiếu!");
+        return;
     }
 
-    private int tinhHanMucMuon(String vaiTro, BigDecimal tienCoc) {
-        if (vaiTro != null && vaiTro.equalsIgnoreCase("Độc giả ngoài")) {
-            if (tienCoc.compareTo(new BigDecimal("100000")) < 0) {
-                return 0;
-            }
+    int soNgayMuon;
 
-            if (tienCoc.compareTo(new BigDecimal("200000")) < 0) {
-                return 1;
-            }
-
-            if (tienCoc.compareTo(new BigDecimal("300000")) < 0) {
-                return 2;
-            }
-
-            return 3;
-        }
-
-        // Độc giả nội bộ / sinh viên / giảng viên / cán bộ.
-        return 5;
+    try {
+        soNgayMuon = Integer.parseInt(txtSoNgayMuon.getText().trim());
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "Số ngày mượn phải là số nguyên!");
+        return;
     }
 
-    private int demSoSachDangMuon(Connection con, String tenDangNhap) throws Exception {
-        String sql = "SELECT COUNT(*) AS so_sach_dang_muon "
-                + "FROM PhieuMuon pm "
-                + "JOIN ChiTietPhieuMuon ct ON pm.id_phieu_muon = ct.id_phieu_muon "
-                + "WHERE pm.ten_dang_nhap = ? "
-                + "AND ct.trang_thai_chi_tiet = N'Đang mượn'";
+    List<String> danhSachIdCaBiet = new ArrayList<>();
 
-        PreparedStatement pstmt = con.prepareStatement(sql);
-        pstmt.setString(1, tenDangNhap);
-
-        ResultSet rs = pstmt.executeQuery();
-
-        int soSachDangMuon = 0;
-
-        if (rs.next()) {
-            soSachDangMuon = rs.getInt("so_sach_dang_muon");
-        }
-
-        rs.close();
-        pstmt.close();
-
-        return soSachDangMuon;
+    for (int i = 0; i < model.getRowCount(); i++) {
+        danhSachIdCaBiet.add(String.valueOf(model.getValueAt(i, 0)));
     }
+
+    KetQuaXuLy ketQua = muonTraController.lapPhieuMuon(
+            docGiaDangChon,
+            soNgayMuon,
+            danhSachIdCaBiet
+    );
+
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
+
+    if (ketQua.isThanhCong()) {
+        lamMoiLapPhieu();
+        taiDanhSachPhieuMuon();
+    }
+}
 
     private String formatTien(BigDecimal soTien) {
         if (soTien == null) {
@@ -1258,56 +790,6 @@ private JPanel buildTraSachInfoPanel() {
 
         return String.format("%,.0f", soTien.doubleValue());
     }
-
-private BigDecimal tinhTienPhat(int soNgayQuaHan, String tinhTrangTra) {
-    BigDecimal tienPhat = BigDecimal.ZERO;
-
-    if (soNgayQuaHan > 0) {
-        tienPhat = tienPhat.add(new BigDecimal(soNgayQuaHan * 5000L));
-    }
-
-    if (tinhTrangTra.equalsIgnoreCase("Rách nhẹ")) {
-        tienPhat = tienPhat.add(new BigDecimal("20000"));
-    } else if (tinhTrangTra.equalsIgnoreCase("Hư hỏng")) {
-        tienPhat = tienPhat.add(new BigDecimal("50000"));
-    } else if (tinhTrangTra.equalsIgnoreCase("Mất")) {
-        tienPhat = tienPhat.add(new BigDecimal("100000"));
-    }
-
-    return tienPhat;
-}
-
-private String taoLoaiViPham(boolean quaHan, String tinhTrangTra) {
-    boolean coHuHong = !tinhTrangTra.equalsIgnoreCase("Tốt");
-
-    if (quaHan && coHuHong) {
-        return "Quá hạn + " + tinhTrangTra;
-    }
-
-    if (quaHan) {
-        return "Quá hạn";
-    }
-
-    return tinhTrangTra;
-}
-
-private String taoMoTaViPham(int soNgayQuaHan, String tinhTrangTra, String ghiChuTra) {
-    String moTa = "";
-
-    if (soNgayQuaHan > 0) {
-        moTa += "Quá hạn " + soNgayQuaHan + " ngày. ";
-    }
-
-    if (!tinhTrangTra.equalsIgnoreCase("Tốt")) {
-        moTa += "Tình trạng sách khi trả: " + tinhTrangTra + ". ";
-    }
-
-    if (ghiChuTra != null && !ghiChuTra.trim().isEmpty()) {
-        moTa += "Ghi chú: " + ghiChuTra.trim();
-    }
-
-    return moTa.trim();
-}
 
 private void taiChiTietPhieuMuonDaChon() {
     int row = tblPhieuMuon.getSelectedRow();
