@@ -8,15 +8,14 @@ import dto.DocGiaMuonDTO;
 import dto.KetQuaXuLy;
 import dto.SachMuonDTO;
 import dto.ThongTinTraSachDTO;
+import dto.PhieuMuonDTO;
+import dto.ChiTietPhieuMuonDTO;
 import java.util.ArrayList;
 import java.util.List;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
@@ -26,7 +25,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
-import utils.DatabaseHelper;
 import utils.UITheme;
 import javax.swing.JComboBox;
 
@@ -813,49 +811,20 @@ private void taiChiTietPhieuMuon(int idPhieuMuon) {
     model.setRowCount(0);
 
     try {
-        Connection con = DatabaseHelper.getConnection();
+        List<ChiTietPhieuMuonDTO> danhSach = muonTraController.layChiTietPhieuMuon(idPhieuMuon);
 
-        String sql = "SELECT "
-                + "ct.id_ca_biet, "
-                + "ds.ten_sach, "
-                + "ct.ngay_tra_thuc_te, "
-                + "ct.trang_thai_chi_tiet, "
-                + "ct.ghi_chu AS ghi_chu_chi_tiet, "
-                + "pp.loai_vi_pham, "
-                + "pp.so_tien_phat, "
-                + "pp.trang_thai_thanh_toan "
-                + "FROM ChiTietPhieuMuon ct "
-                + "JOIN CuonSach cs ON ct.id_ca_biet = cs.id_ca_biet "
-                + "JOIN DauSach ds ON cs.id_dau_sach = ds.id_dau_sach "
-                + "LEFT JOIN PhieuPhat pp "
-                + "ON pp.id_phieu_muon = ct.id_phieu_muon "
-                + "AND pp.id_ca_biet = ct.id_ca_biet "
-                + "WHERE ct.id_phieu_muon = ? "
-                + "ORDER BY ct.id_ca_biet";
-
-        PreparedStatement pstmt = con.prepareStatement(sql);
-        pstmt.setInt(1, idPhieuMuon);
-
-        ResultSet rs = pstmt.executeQuery();
-
-        while (rs.next()) {
-            BigDecimal tienPhat = rs.getBigDecimal("so_tien_phat");
-
+        for (ChiTietPhieuMuonDTO ct : danhSach) {
             model.addRow(new Object[]{
-                rs.getString("id_ca_biet"),
-                rs.getString("ten_sach"),
-                rs.getTimestamp("ngay_tra_thuc_te"),
-                rs.getString("trang_thai_chi_tiet"),
-                rs.getString("ghi_chu_chi_tiet"),
-                rs.getString("loai_vi_pham") == null ? "-" : rs.getString("loai_vi_pham"),
-                tienPhat == null ? "-" : formatTien(tienPhat),
-                rs.getString("trang_thai_thanh_toan") == null ? "-" : rs.getString("trang_thai_thanh_toan")
+                ct.getIdCaBiet(),
+                ct.getTenSach(),
+                ct.getNgayTraThucTe(),
+                ct.getTrangThaiChiTiet(),
+                ct.getGhiChuChiTiet(),
+                ct.getLoaiViPham() == null ? "-" : ct.getLoaiViPham(),
+                ct.getSoTienPhat() == null ? "-" : formatTien(ct.getSoTienPhat()),
+                ct.getTrangThaiThanhToan() == null ? "-" : ct.getTrangThaiThanhToan()
             });
         }
-
-        rs.close();
-        pstmt.close();
-        con.close();
 
     } catch (Exception e) {
         e.printStackTrace();
@@ -873,56 +842,34 @@ private void lamMoiChiTietPhieuMuon() {
 }
 
     private void taiDanhSachPhieuMuon() {
-        if (tblPhieuMuon == null) {
-            return;
-        }
-
-        DefaultTableModel model = (DefaultTableModel) tblPhieuMuon.getModel();
-        model.setRowCount(0);
-        lamMoiChiTietPhieuMuon();
-
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "SELECT "
-                    + "pm.id_phieu_muon, "
-                    + "pm.ten_dang_nhap, "
-                    + "tk.ho_ten, "
-                    + "pm.ngay_muon, "
-                    + "pm.han_tra, "
-                    + "pm.trang_thai_phieu, "
-                    + "COUNT(ct.id_chi_tiet) AS so_sach "
-                    + "FROM PhieuMuon pm "
-                    + "JOIN TaiKhoan tk ON pm.ten_dang_nhap = tk.ten_dang_nhap "
-                    + "LEFT JOIN ChiTietPhieuMuon ct ON pm.id_phieu_muon = ct.id_phieu_muon "
-                    + "GROUP BY pm.id_phieu_muon, pm.ten_dang_nhap, tk.ho_ten, "
-                    + "pm.ngay_muon, pm.han_tra, pm.trang_thai_phieu "
-                    + "ORDER BY pm.id_phieu_muon DESC";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getInt("id_phieu_muon"),
-                    rs.getString("ten_dang_nhap"),
-                    rs.getString("ho_ten"),
-                    rs.getTimestamp("ngay_muon"),
-                    rs.getTimestamp("han_tra"),
-                    rs.getString("trang_thai_phieu"),
-                    rs.getInt("so_sach")
-                });
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tải danh sách phiếu mượn: " + e.getMessage());
-        }
+    if (tblPhieuMuon == null) {
+        return;
     }
+
+    DefaultTableModel model = (DefaultTableModel) tblPhieuMuon.getModel();
+    model.setRowCount(0);
+    lamMoiChiTietPhieuMuon();
+
+    try {
+        List<PhieuMuonDTO> danhSach = muonTraController.layDanhSachPhieuMuon();
+
+        for (PhieuMuonDTO pm : danhSach) {
+            model.addRow(new Object[]{
+                pm.getIdPhieuMuon(),
+                pm.getTenDangNhap(),
+                pm.getHoTen(),
+                pm.getNgayMuon(),
+                pm.getHanTra(),
+                pm.getTrangThaiPhieu(),
+                pm.getSoSach()
+            });
+        }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tải danh sách phiếu mượn: " + e.getMessage());
+    }
+}
 
     private void lamMoiLapPhieu() {
         txtTenDangNhap.setText("");

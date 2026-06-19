@@ -5,6 +5,8 @@ import dto.DocGiaMuonDTO;
 import dto.KetQuaXuLy;
 import dto.SachMuonDTO;
 import dto.ThongTinTraSachDTO;
+import dto.PhieuMuonDTO;
+import dto.ChiTietPhieuMuonDTO;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -397,5 +399,12 @@ private String xacDinhTrangThaiLuuThongMoi(String tinhTrangTra) {
     }
 
     return "Mất";
+}
+    public List<PhieuMuonDTO> layDanhSachPhieuMuon() throws Exception {
+    return muonTraDAO.layDanhSachPhieuMuon();
+}
+
+public List<ChiTietPhieuMuonDTO> layChiTietPhieuMuon(int idPhieuMuon) throws Exception {
+    return muonTraDAO.layChiTietPhieuMuon(idPhieuMuon);
 }
 }

@@ -3,6 +3,9 @@ package dao;
 import dto.DocGiaMuonDTO;
 import dto.SachMuonDTO;
 import dto.ThongTinTraSachDTO;
+import dto.PhieuMuonDTO;
+import dto.ChiTietPhieuMuonDTO;
+import java.util.ArrayList;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -363,5 +366,90 @@ public class MuonTraDAO {
             con.close();
         }
     }
+}
+    public List<PhieuMuonDTO> layDanhSachPhieuMuon() throws Exception {
+    List<PhieuMuonDTO> danhSach = new ArrayList<>();
+
+    String sql = "SELECT "
+            + "pm.id_phieu_muon, "
+            + "pm.ten_dang_nhap, "
+            + "tk.ho_ten, "
+            + "pm.ngay_muon, "
+            + "pm.han_tra, "
+            + "pm.trang_thai_phieu, "
+            + "COUNT(ct.id_chi_tiet) AS so_sach "
+            + "FROM PhieuMuon pm "
+            + "JOIN TaiKhoan tk ON pm.ten_dang_nhap = tk.ten_dang_nhap "
+            + "LEFT JOIN ChiTietPhieuMuon ct ON pm.id_phieu_muon = ct.id_phieu_muon "
+            + "GROUP BY pm.id_phieu_muon, pm.ten_dang_nhap, tk.ho_ten, "
+            + "pm.ngay_muon, pm.han_tra, pm.trang_thai_phieu "
+            + "ORDER BY pm.id_phieu_muon DESC";
+
+    try (Connection con = DatabaseHelper.getConnection();
+         PreparedStatement pstmt = con.prepareStatement(sql);
+         ResultSet rs = pstmt.executeQuery()) {
+
+        while (rs.next()) {
+            PhieuMuonDTO pm = new PhieuMuonDTO();
+
+            pm.setIdPhieuMuon(rs.getInt("id_phieu_muon"));
+            pm.setTenDangNhap(rs.getString("ten_dang_nhap"));
+            pm.setHoTen(rs.getString("ho_ten"));
+            pm.setNgayMuon(rs.getTimestamp("ngay_muon"));
+            pm.setHanTra(rs.getTimestamp("han_tra"));
+            pm.setTrangThaiPhieu(rs.getString("trang_thai_phieu"));
+            pm.setSoSach(rs.getInt("so_sach"));
+
+            danhSach.add(pm);
+        }
+    }
+
+    return danhSach;
+}
+    public List<ChiTietPhieuMuonDTO> layChiTietPhieuMuon(int idPhieuMuon) throws Exception {
+    List<ChiTietPhieuMuonDTO> danhSach = new ArrayList<>();
+
+    String sql = "SELECT "
+            + "ct.id_ca_biet, "
+            + "ds.ten_sach, "
+            + "ct.ngay_tra_thuc_te, "
+            + "ct.trang_thai_chi_tiet, "
+            + "ct.ghi_chu AS ghi_chu_chi_tiet, "
+            + "pp.loai_vi_pham, "
+            + "pp.so_tien_phat, "
+            + "pp.trang_thai_thanh_toan "
+            + "FROM ChiTietPhieuMuon ct "
+            + "JOIN CuonSach cs ON ct.id_ca_biet = cs.id_ca_biet "
+            + "JOIN DauSach ds ON cs.id_dau_sach = ds.id_dau_sach "
+            + "LEFT JOIN PhieuPhat pp "
+            + "ON pp.id_phieu_muon = ct.id_phieu_muon "
+            + "AND pp.id_ca_biet = ct.id_ca_biet "
+            + "WHERE ct.id_phieu_muon = ? "
+            + "ORDER BY ct.id_ca_biet";
+
+    try (Connection con = DatabaseHelper.getConnection();
+         PreparedStatement pstmt = con.prepareStatement(sql)) {
+
+        pstmt.setInt(1, idPhieuMuon);
+
+        try (ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                ChiTietPhieuMuonDTO ct = new ChiTietPhieuMuonDTO();
+
+                ct.setIdCaBiet(rs.getString("id_ca_biet"));
+                ct.setTenSach(rs.getString("ten_sach"));
+                ct.setNgayTraThucTe(rs.getTimestamp("ngay_tra_thuc_te"));
+                ct.setTrangThaiChiTiet(rs.getString("trang_thai_chi_tiet"));
+                ct.setGhiChuChiTiet(rs.getString("ghi_chu_chi_tiet"));
+                ct.setLoaiViPham(rs.getString("loai_vi_pham"));
+                ct.setSoTienPhat(rs.getBigDecimal("so_tien_phat"));
+                ct.setTrangThaiThanhToan(rs.getString("trang_thai_thanh_toan"));
+
+                danhSach.add(ct);
+            }
+        }
+    }
+
+    return danhSach;
 }
 }
