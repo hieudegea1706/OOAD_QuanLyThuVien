@@ -3,13 +3,14 @@ package views;
 import components.ModernButton;
 import components.ModernTextField;
 import components.RoundedPanel;
+import controllers.PhieuPhatController;
+import dto.KetQuaXuLy;
+import dto.PhieuPhatDTO;
+import java.util.List;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
@@ -19,10 +20,11 @@ import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.JTextArea;
 import javax.swing.table.DefaultTableModel;
-import utils.DatabaseHelper;
 import utils.UITheme;
 
 public class QuanLyPhieuPhatPnl extends JPanel {
+    
+    private final PhieuPhatController phieuPhatController = new PhieuPhatController();
 
     private ModernTextField txtTimKiem;
     private JTable tblPhieuPhat;
@@ -282,144 +284,61 @@ public class QuanLyPhieuPhatPnl extends JPanel {
         table.getTableHeader().setForeground(UITheme.TEXT_DARK);
         table.getTableHeader().setReorderingAllowed(false);
     }
+    
+    private void doDanhSachLenBang(List<PhieuPhatDTO> danhSach) {
+    DefaultTableModel model = (DefaultTableModel) tblPhieuPhat.getModel();
+    model.setRowCount(0);
+
+    for (PhieuPhatDTO pp : danhSach) {
+        model.addRow(new Object[]{
+            pp.getIdPhieuPhat(),
+            pp.getIdPhieuMuon(),
+            pp.getTenDangNhap(),
+            pp.getHoTen(),
+            pp.getIdCaBiet(),
+            pp.getTenSach(),
+            pp.getLoaiViPham(),
+            pp.getSoNgayQuaHan(),
+            formatTien(pp.getSoTienPhat()),
+            pp.getTrangThaiThanhToan(),
+            pp.getNgayLap(),
+            pp.getMoTaViPham()
+        });
+    }
+}
 
     // =====================================================
     // LOAD DATA
     // =====================================================
 
     private void taiDanhSachPhieuPhat() {
-        DefaultTableModel model = (DefaultTableModel) tblPhieuPhat.getModel();
-        model.setRowCount(0);
+    try {
+        List<PhieuPhatDTO> danhSach = phieuPhatController.layDanhSachPhieuPhat();
+        doDanhSachLenBang(danhSach);
 
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "SELECT "
-                    + "pp.id_phieu_phat, "
-                    + "pp.id_phieu_muon, "
-                    + "pp.ten_dang_nhap, "
-                    + "tk.ho_ten, "
-                    + "pp.id_ca_biet, "
-                    + "ds.ten_sach, "
-                    + "pp.loai_vi_pham, "
-                    + "pp.so_ngay_qua_han, "
-                    + "pp.so_tien_phat, "
-                    + "pp.trang_thai_thanh_toan, "
-                    + "pp.ngay_lap, "
-                    + "pp.mo_ta_vi_pham "
-                    + "FROM PhieuPhat pp "
-                    + "JOIN TaiKhoan tk ON pp.ten_dang_nhap = tk.ten_dang_nhap "
-                    + "JOIN CuonSach cs ON pp.id_ca_biet = cs.id_ca_biet "
-                    + "JOIN DauSach ds ON cs.id_dau_sach = ds.id_dau_sach "
-                    + "ORDER BY pp.id_phieu_phat DESC";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getInt("id_phieu_phat"),
-                    rs.getInt("id_phieu_muon"),
-                    rs.getString("ten_dang_nhap"),
-                    rs.getString("ho_ten"),
-                    rs.getString("id_ca_biet"),
-                    rs.getString("ten_sach"),
-                    rs.getString("loai_vi_pham"),
-                    rs.getInt("so_ngay_qua_han"),
-                    formatTien(rs.getBigDecimal("so_tien_phat")),
-                    rs.getString("trang_thai_thanh_toan"),
-                    rs.getTimestamp("ngay_lap"),
-                    rs.getString("mo_ta_vi_pham")
-                });
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tải danh sách phiếu phạt: " + e.getMessage());
-        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tải danh sách phiếu phạt: " + e.getMessage());
     }
+}
 
     private void timKiemPhieuPhat() {
-        String tuKhoa = txtTimKiem.getText().trim();
+    String tuKhoa = txtTimKiem.getText().trim();
 
-        if (tuKhoa.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập từ khóa tìm kiếm!");
-            return;
-        }
-
-        DefaultTableModel model = (DefaultTableModel) tblPhieuPhat.getModel();
-        model.setRowCount(0);
-
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "SELECT "
-                    + "pp.id_phieu_phat, "
-                    + "pp.id_phieu_muon, "
-                    + "pp.ten_dang_nhap, "
-                    + "tk.ho_ten, "
-                    + "pp.id_ca_biet, "
-                    + "ds.ten_sach, "
-                    + "pp.loai_vi_pham, "
-                    + "pp.so_ngay_qua_han, "
-                    + "pp.so_tien_phat, "
-                    + "pp.trang_thai_thanh_toan, "
-                    + "pp.ngay_lap, "
-                    + "pp.mo_ta_vi_pham "
-                    + "FROM PhieuPhat pp "
-                    + "JOIN TaiKhoan tk ON pp.ten_dang_nhap = tk.ten_dang_nhap "
-                    + "JOIN CuonSach cs ON pp.id_ca_biet = cs.id_ca_biet "
-                    + "JOIN DauSach ds ON cs.id_dau_sach = ds.id_dau_sach "
-                    + "WHERE pp.ten_dang_nhap LIKE ? "
-                    + "OR tk.ho_ten LIKE ? "
-                    + "OR pp.id_ca_biet LIKE ? "
-                    + "OR ds.ten_sach LIKE ? "
-                    + "OR pp.loai_vi_pham LIKE ? "
-                    + "OR pp.trang_thai_thanh_toan LIKE ? "
-                    + "ORDER BY pp.id_phieu_phat DESC";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-
-            String keyword = "%" + tuKhoa + "%";
-            pstmt.setString(1, keyword);
-            pstmt.setString(2, keyword);
-            pstmt.setString(3, keyword);
-            pstmt.setString(4, keyword);
-            pstmt.setString(5, keyword);
-            pstmt.setString(6, keyword);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getInt("id_phieu_phat"),
-                    rs.getInt("id_phieu_muon"),
-                    rs.getString("ten_dang_nhap"),
-                    rs.getString("ho_ten"),
-                    rs.getString("id_ca_biet"),
-                    rs.getString("ten_sach"),
-                    rs.getString("loai_vi_pham"),
-                    rs.getInt("so_ngay_qua_han"),
-                    formatTien(rs.getBigDecimal("so_tien_phat")),
-                    rs.getString("trang_thai_thanh_toan"),
-                    rs.getTimestamp("ngay_lap"),
-                    rs.getString("mo_ta_vi_pham")
-                });
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm phiếu phạt: " + e.getMessage());
-        }
+    if (tuKhoa.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Vui lòng nhập từ khóa tìm kiếm!");
+        return;
     }
+
+    try {
+        List<PhieuPhatDTO> danhSach = phieuPhatController.timKiemPhieuPhat(tuKhoa);
+        doDanhSachLenBang(danhSach);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm phiếu phạt: " + e.getMessage());
+    }
+}
 
     private void doDuLieuLenChiTiet() {
         int row = tblPhieuPhat.getSelectedRow();
@@ -449,62 +368,38 @@ public class QuanLyPhieuPhatPnl extends JPanel {
     }
 
     private void xacNhanThanhToan() {
-        int row = tblPhieuPhat.getSelectedRow();
+    int row = tblPhieuPhat.getSelectedRow();
 
-        if (row < 0) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn phiếu phạt cần xác nhận thanh toán!");
-            return;
-        }
-
-        DefaultTableModel model = (DefaultTableModel) tblPhieuPhat.getModel();
-
-        int idPhieuPhat = Integer.parseInt(String.valueOf(model.getValueAt(row, 0)));
-        String trangThai = String.valueOf(model.getValueAt(row, 9));
-
-        if (trangThai.equalsIgnoreCase("Đã thanh toán")) {
-            JOptionPane.showMessageDialog(this, "Phiếu phạt này đã được thanh toán rồi!");
-            return;
-        }
-
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Xác nhận đã thu tiền phạt cho phiếu phạt #" + idPhieuPhat + "?",
-                "Xác nhận thanh toán",
-                JOptionPane.YES_NO_OPTION
-        );
-
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "UPDATE PhieuPhat "
-                    + "SET trang_thai_thanh_toan = N'Đã thanh toán' "
-                    + "WHERE id_phieu_phat = ?";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            pstmt.setInt(1, idPhieuPhat);
-
-            int result = pstmt.executeUpdate();
-
-            if (result > 0) {
-                JOptionPane.showMessageDialog(this, "Đã xác nhận thanh toán phiếu phạt!");
-                taiDanhSachPhieuPhat();
-                lamMoiThongTin();
-            } else {
-                JOptionPane.showMessageDialog(this, "Không tìm thấy phiếu phạt cần cập nhật!");
-            }
-
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi xác nhận thanh toán: " + e.getMessage());
-        }
+    if (row < 0) {
+        JOptionPane.showMessageDialog(this, "Vui lòng chọn phiếu phạt cần xác nhận thanh toán!");
+        return;
     }
+
+    DefaultTableModel model = (DefaultTableModel) tblPhieuPhat.getModel();
+
+    int idPhieuPhat = Integer.parseInt(String.valueOf(model.getValueAt(row, 0)));
+    String trangThai = String.valueOf(model.getValueAt(row, 9));
+
+    int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Xác nhận đã thu tiền phạt cho phiếu phạt #" + idPhieuPhat + "?",
+            "Xác nhận thanh toán",
+            JOptionPane.YES_NO_OPTION
+    );
+
+    if (confirm != JOptionPane.YES_OPTION) {
+        return;
+    }
+
+    KetQuaXuLy ketQua = phieuPhatController.xacNhanThanhToan(idPhieuPhat, trangThai);
+
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
+
+    if (ketQua.isThanhCong()) {
+        taiDanhSachPhieuPhat();
+        lamMoiThongTin();
+    }
+}
 
     private void lamMoiThongTin() {
         txtTimKiem.setText("");
