@@ -3,6 +3,7 @@ package dao;
 import dto.LichSuMuonTraDocGiaDTO;
 import dto.SachXuHuongDTO;
 import dto.ThongTinTongQuanDocGiaDTO;
+import dto.SachTraCuuDTO;
 import java.math.BigDecimal;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -121,6 +122,64 @@ public class DocGiaHomeDAO {
 
         return danhSach;
     }
+    
+    public List<SachTraCuuDTO> traCuuSach(String tuKhoa) throws Exception {
+    List<SachTraCuuDTO> danhSach = new ArrayList<>();
+
+    String sql = "SELECT "
+            + "ds.id_dau_sach, "
+            + "ds.ten_sach, "
+            + "ds.tac_gia, "
+            + "ds.the_loai, "
+            + "ds.nha_xuat_ban, "
+            + "ds.nam_xuat_ban, "
+            + "SUM(CASE WHEN cs.trang_thai_luu_thong = N'Sẵn sàng' THEN 1 ELSE 0 END) AS so_ban_san_sang, "
+            + "MIN(CASE WHEN cs.trang_thai_luu_thong = N'Sẵn sàng' THEN cs.vi_tri_ke ELSE NULL END) AS vi_tri_ke "
+            + "FROM DauSach ds "
+            + "LEFT JOIN CuonSach cs ON ds.id_dau_sach = cs.id_dau_sach "
+            + "WHERE ds.trang_thai <> N'Ngừng phục vụ' "
+            + "AND (ds.id_dau_sach LIKE ? "
+            + "OR ds.ten_sach LIKE ? "
+            + "OR ds.tac_gia LIKE ? "
+            + "OR ds.the_loai LIKE ? "
+            + "OR ds.nha_xuat_ban LIKE ?) "
+            + "GROUP BY ds.id_dau_sach, ds.ten_sach, ds.tac_gia, ds.the_loai, ds.nha_xuat_ban, ds.nam_xuat_ban "
+            + "ORDER BY ds.ten_sach";
+
+    try (Connection con = DatabaseHelper.getConnection();
+         PreparedStatement pstmt = con.prepareStatement(sql)) {
+
+        String keyword = "%" + (tuKhoa == null ? "" : tuKhoa.trim()) + "%";
+
+        pstmt.setString(1, keyword);
+        pstmt.setString(2, keyword);
+        pstmt.setString(3, keyword);
+        pstmt.setString(4, keyword);
+        pstmt.setString(5, keyword);
+
+        try (ResultSet rs = pstmt.executeQuery()) {
+            while (rs.next()) {
+                SachTraCuuDTO dto = new SachTraCuuDTO();
+
+                dto.setIdDauSach(rs.getString("id_dau_sach"));
+                dto.setTenSach(rs.getString("ten_sach"));
+                dto.setTacGia(rs.getString("tac_gia"));
+                dto.setTheLoai(rs.getString("the_loai"));
+                dto.setNhaXuatBan(rs.getString("nha_xuat_ban"));
+
+                Object nam = rs.getObject("nam_xuat_ban");
+                dto.setNamXuatBan(nam == null ? null : rs.getInt("nam_xuat_ban"));
+
+                dto.setSoBanSanSang(rs.getInt("so_ban_san_sang"));
+                dto.setViTriKe(rs.getString("vi_tri_ke"));
+
+                danhSach.add(dto);
+            }
+        }
+    }
+
+    return danhSach;
+}
 
     public List<LichSuMuonTraDocGiaDTO> layLichSuMuonTra(String tenDangNhap) throws Exception {
         List<LichSuMuonTraDocGiaDTO> danhSach = new ArrayList<>();

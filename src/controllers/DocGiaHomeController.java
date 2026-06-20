@@ -4,6 +4,7 @@ import dao.DocGiaHomeDAO;
 import dto.LichSuMuonTraDocGiaDTO;
 import dto.SachXuHuongDTO;
 import dto.ThongTinTongQuanDocGiaDTO;
+import dto.SachTraCuuDTO;
 import java.util.List;
 
 public class DocGiaHomeController {
@@ -33,4 +34,9 @@ public class DocGiaHomeController {
 
         return docGiaHomeDAO.layLichSuMuonTra(tenDangNhap);
     }
+    
+    public List<SachTraCuuDTO> traCuuSach(String tuKhoa) throws Exception {
+    tuKhoa = tuKhoa == null ? "" : tuKhoa.trim();
+    return docGiaHomeDAO.traCuuSach(tuKhoa);
+}
 }
