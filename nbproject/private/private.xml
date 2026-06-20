@@ -23,6 +23,11 @@
             <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dao/MuonTraDAO.java</file>
             <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/controllers/MuonTraController.java</file>
             <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dto/ThongTinTraSachDTO.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dto/PhieuMuonDTO.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dto/ChiTietPhieuMuonDTO.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dto/PhieuPhatDTO.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/dao/PhieuPhatDAO.java</file>
+            <file>file:/F:/OOAD/BTL/QuanLyThuVienProject/src/controllers/PhieuPhatController.java</file>
         </group>
     </open-files>
 </project-private>

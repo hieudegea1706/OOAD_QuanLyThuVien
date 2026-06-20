@@ -2,14 +2,16 @@ package views;
 
 import components.ModernButton;
 import components.RoundedPanel;
+import controllers.ThongKeBaoCaoController;
+import dto.SachQuaHanDTO;
+import dto.TongQuanThongKeDTO;
+import dto.TopSachMuonDTO;
+import java.util.List;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.math.BigDecimal;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
@@ -18,10 +20,11 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
-import utils.DatabaseHelper;
 import utils.UITheme;
 
 public class ThongKeBaoCaoPnl extends JPanel {
+    
+    private final ThongKeBaoCaoController thongKeBaoCaoController = new ThongKeBaoCaoController();
 
     private JLabel lblTongDauSach;
     private JLabel lblTongCuonSach;
@@ -279,161 +282,70 @@ public class ThongKeBaoCaoPnl extends JPanel {
     }
 
     private void taiSoLieuTongQuan() {
-        try {
-            Connection con = DatabaseHelper.getConnection();
+    try {
+        TongQuanThongKeDTO dto = thongKeBaoCaoController.layTongQuanThongKe();
 
-            lblTongDauSach.setText(String.valueOf(demGiaTri(con, "SELECT COUNT(*) FROM DauSach")));
-            lblTongCuonSach.setText(String.valueOf(demGiaTri(con, "SELECT COUNT(*) FROM CuonSach")));
+        lblTongDauSach.setText(String.valueOf(dto.getTongDauSach()));
+        lblTongCuonSach.setText(String.valueOf(dto.getTongCuonSach()));
+        lblSachSanSang.setText(String.valueOf(dto.getSachSanSang()));
+        lblSachDangMuon.setText(String.valueOf(dto.getSachDangMuon()));
+        lblPhieuDangMuon.setText(String.valueOf(dto.getPhieuDangMuon()));
+        lblPhieuPhatChuaThanhToan.setText(String.valueOf(dto.getPhieuPhatChuaThanhToan()));
+        lblTienPhatChuaThu.setText(formatTien(dto.getTienPhatChuaThu()));
+        lblTienCocDangGiu.setText(formatTien(dto.getTienCocDangGiu()));
 
-            lblSachSanSang.setText(String.valueOf(demGiaTri(con,
-                    "SELECT COUNT(*) FROM CuonSach WHERE trang_thai_luu_thong = N'Sẵn sàng'")));
-
-            lblSachDangMuon.setText(String.valueOf(demGiaTri(con,
-                    "SELECT COUNT(*) FROM CuonSach WHERE trang_thai_luu_thong = N'Đang cho mượn'")));
-
-            lblPhieuDangMuon.setText(String.valueOf(demGiaTri(con,
-                    "SELECT COUNT(*) FROM PhieuMuon WHERE trang_thai_phieu = N'Đang mượn'")));
-
-            lblPhieuPhatChuaThanhToan.setText(String.valueOf(demGiaTri(con,
-                    "SELECT COUNT(*) FROM PhieuPhat WHERE trang_thai_thanh_toan = N'Chưa thanh toán'")));
-
-            BigDecimal tienPhatChuaThu = layTongTien(con,
-                    "SELECT ISNULL(SUM(so_tien_phat), 0) FROM PhieuPhat WHERE trang_thai_thanh_toan = N'Chưa thanh toán'");
-
-            BigDecimal tienCocDangGiu = layTongTien(con,
-                    "SELECT ISNULL(SUM(tien_coc), 0) FROM DocGiaNgoai");
-
-            lblTienPhatChuaThu.setText(formatTien(tienPhatChuaThu));
-            lblTienCocDangGiu.setText(formatTien(tienCocDangGiu));
-
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tải số liệu tổng quan: " + e.getMessage());
-        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tải số liệu tổng quan: " + e.getMessage());
     }
-
-    private int demGiaTri(Connection con, String sql) throws Exception {
-        PreparedStatement pstmt = con.prepareStatement(sql);
-        ResultSet rs = pstmt.executeQuery();
-
-        int value = 0;
-
-        if (rs.next()) {
-            value = rs.getInt(1);
-        }
-
-        rs.close();
-        pstmt.close();
-
-        return value;
-    }
-
-    private BigDecimal layTongTien(Connection con, String sql) throws Exception {
-        PreparedStatement pstmt = con.prepareStatement(sql);
-        ResultSet rs = pstmt.executeQuery();
-
-        BigDecimal value = BigDecimal.ZERO;
-
-        if (rs.next()) {
-            value = rs.getBigDecimal(1);
-        }
-
-        rs.close();
-        pstmt.close();
-
-        return value == null ? BigDecimal.ZERO : value;
-    }
+}
 
     private void taiDanhSachQuaHan() {
-        DefaultTableModel model = (DefaultTableModel) tblQuaHan.getModel();
-        model.setRowCount(0);
+    DefaultTableModel model = (DefaultTableModel) tblQuaHan.getModel();
+    model.setRowCount(0);
 
-        try {
-            Connection con = DatabaseHelper.getConnection();
+    try {
+        List<SachQuaHanDTO> danhSach = thongKeBaoCaoController.layDanhSachQuaHan();
 
-            String sql = "SELECT "
-                    + "pm.id_phieu_muon, "
-                    + "tk.ho_ten, "
-                    + "ct.id_ca_biet, "
-                    + "ds.ten_sach, "
-                    + "pm.han_tra, "
-                    + "DATEDIFF(DAY, pm.han_tra, GETDATE()) AS so_ngay_qua_han "
-                    + "FROM PhieuMuon pm "
-                    + "JOIN TaiKhoan tk ON pm.ten_dang_nhap = tk.ten_dang_nhap "
-                    + "JOIN ChiTietPhieuMuon ct ON pm.id_phieu_muon = ct.id_phieu_muon "
-                    + "JOIN CuonSach cs ON ct.id_ca_biet = cs.id_ca_biet "
-                    + "JOIN DauSach ds ON cs.id_dau_sach = ds.id_dau_sach "
-                    + "WHERE ct.trang_thai_chi_tiet = N'Đang mượn' "
-                    + "AND pm.han_tra < GETDATE() "
-                    + "ORDER BY so_ngay_qua_han DESC";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getInt("id_phieu_muon"),
-                    rs.getString("ho_ten"),
-                    rs.getString("id_ca_biet"),
-                    rs.getString("ten_sach"),
-                    rs.getTimestamp("han_tra"),
-                    rs.getInt("so_ngay_qua_han")
-                });
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tải danh sách quá hạn: " + e.getMessage());
+        for (SachQuaHanDTO item : danhSach) {
+            model.addRow(new Object[]{
+                item.getIdPhieuMuon(),
+                item.getHoTen(),
+                item.getIdCaBiet(),
+                item.getTenSach(),
+                item.getHanTra(),
+                item.getSoNgayQuaHan()
+            });
         }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tải danh sách quá hạn: " + e.getMessage());
     }
+}
 
     private void taiTopSachMuonNhieu() {
-        DefaultTableModel model = (DefaultTableModel) tblTopSach.getModel();
-        model.setRowCount(0);
+    DefaultTableModel model = (DefaultTableModel) tblTopSach.getModel();
+    model.setRowCount(0);
 
-        try {
-            Connection con = DatabaseHelper.getConnection();
+    try {
+        List<TopSachMuonDTO> danhSach = thongKeBaoCaoController.layTopSachMuonNhieu();
 
-            String sql = "SELECT TOP 10 "
-                    + "ds.id_dau_sach, "
-                    + "ds.ten_sach, "
-                    + "ds.tac_gia, "
-                    + "ds.the_loai, "
-                    + "COUNT(ct.id_chi_tiet) AS so_luot_muon "
-                    + "FROM ChiTietPhieuMuon ct "
-                    + "JOIN CuonSach cs ON ct.id_ca_biet = cs.id_ca_biet "
-                    + "JOIN DauSach ds ON cs.id_dau_sach = ds.id_dau_sach "
-                    + "GROUP BY ds.id_dau_sach, ds.ten_sach, ds.tac_gia, ds.the_loai "
-                    + "ORDER BY so_luot_muon DESC";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getString("id_dau_sach"),
-                    rs.getString("ten_sach"),
-                    rs.getString("tac_gia"),
-                    rs.getString("the_loai"),
-                    rs.getInt("so_luot_muon")
-                });
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tải top sách mượn nhiều: " + e.getMessage());
+        for (TopSachMuonDTO item : danhSach) {
+            model.addRow(new Object[]{
+                item.getIdDauSach(),
+                item.getTenSach(),
+                item.getTacGia(),
+                item.getTheLoai(),
+                item.getSoLuotMuon()
+            });
         }
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tải top sách mượn nhiều: " + e.getMessage());
     }
+}
 
     private String formatTien(BigDecimal soTien) {
         if (soTien == null) {
