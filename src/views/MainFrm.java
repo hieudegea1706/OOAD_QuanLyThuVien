@@ -4,6 +4,8 @@
  */
 package views;
 
+import utils.AppSession;
+
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import javax.swing.JFrame;
@@ -51,6 +53,7 @@ public class MainFrm extends JFrame {
     }
 
     public void moManHinhDangNhapAnToan() {
+        AppSession.dangXuat();
         dangNhapPnl.xoaTrangDuLieu();
         chuyenManHinh("cardDangNhap");
     }

@@ -4,6 +4,9 @@ import components.ModernButton;
 import components.ModernPasswordField;
 import components.ModernTextField;
 import components.RoundedPanel;
+import controllers.AuthController;
+import dto.KetQuaDangNhap;
+import utils.AppSession;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -17,6 +20,7 @@ import utils.UITheme;
 
 public class DangNhapPnl extends JPanel {
     private MainFrm main;
+    private final AuthController authController = new AuthController();
 
     private ModernTextField txtTenDangNhap;
     private ModernPasswordField txtMatKhau;
@@ -140,159 +144,37 @@ public class DangNhapPnl extends JPanel {
     }
 
     private void xuLyDangNhap() {
-    try {
-        String username = txtTenDangNhap.getText().trim();
-        String password = new String(txtMatKhau.getPassword());
+    String username = txtTenDangNhap.getText().trim();
+    String password = new String(txtMatKhau.getPassword());
 
-        if (username.isEmpty() || password.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ thông tin!");
-            return;
-        }
+    KetQuaDangNhap ketQua = authController.dangNhap(username, password);
 
-        java.sql.Connection con = utils.DatabaseHelper.getConnection();
+    if (!ketQua.isThanhCong()) {
+        JOptionPane.showMessageDialog(this, ketQua.getThongBao());
+        return;
+    }
 
-        String sql = "SELECT * FROM TaiKhoan WHERE ten_dang_nhap = ? AND mat_khau = ?";
-        java.sql.PreparedStatement pstmt = con.prepareStatement(sql);
-        pstmt.setString(1, username);
-        pstmt.setString(2, password);
+    AppSession.dangNhap(
+            ketQua.getTenDangNhap(),
+            ketQua.getHoTen(),
+            ketQua.getVaiTro()
+    );
 
-        java.sql.ResultSet rs = pstmt.executeQuery();
+    JOptionPane.showMessageDialog(this,
+            "Xin chào " + ketQua.getHoTen() + "!\nVai trò: " + ketQua.getVaiTro()
+    );
 
-        if (rs.next()) {
-            String trangThai = rs.getString("trang_thai_tai_khoan");
-            String vaiTro = rs.getString("vai_tro");
-            String hoTen = rs.getString("ho_ten");
+    if ("Thủ thư".equalsIgnoreCase(ketQua.getVaiTro())) {
+        main.chuyenManHinh("cardTrangChuThuThu");
 
-            // 1. Tài khoản bị khóa
-            if (trangThai.equalsIgnoreCase("Bị khóa")) {
-                JOptionPane.showMessageDialog(this,
-                        "Tài khoản của bạn đã bị khóa!\nVui lòng liên hệ Thư viện.",
-                        "Từ chối truy cập",
-                        JOptionPane.ERROR_MESSAGE
-                );
+    } else if ("Sinh viên".equalsIgnoreCase(ketQua.getVaiTro())
+            || "Độc giả ngoài".equalsIgnoreCase(ketQua.getVaiTro())) {
+        main.chuyenManHinh("cardTrangChuDocGia");
 
-                rs.close();
-                pstmt.close();
-                con.close();
-                return;
-            }
-
-            // 2. Độc giả ngoài đang chờ thủ thư duyệt
-            if (trangThai.equalsIgnoreCase("Chờ duyệt")) {
-                JOptionPane.showMessageDialog(this,
-                        "Tài khoản đang CHỜ DUYỆT!\n"
-                        + "Vui lòng mang CCCD và tiền cọc đến quầy Thủ thư để kích hoạt.",
-                        "Từ chối truy cập",
-                        JOptionPane.WARNING_MESSAGE
-                );
-
-                rs.close();
-                pstmt.close();
-                con.close();
-                return;
-            }
-
-            // 3. Sinh viên nội bộ đăng nhập lần đầu, cần kích hoạt
-            if (trangThai.equalsIgnoreCase("Chưa kích hoạt")) {
-
-                if (!vaiTro.equalsIgnoreCase("Sinh viên")) {
-                    JOptionPane.showMessageDialog(this,
-                            "Tài khoản chưa kích hoạt nhưng không phải tài khoản sinh viên.\n"
-                            + "Vui lòng liên hệ Thủ thư để kiểm tra.",
-                            "Không thể kích hoạt tự động",
-                            JOptionPane.WARNING_MESSAGE
-                    );
-
-                    rs.close();
-                    pstmt.close();
-                    con.close();
-                    return;
-                }
-
-                int confirm = JOptionPane.showConfirmDialog(
-                        this,
-                        "Tài khoản sinh viên này chưa được kích hoạt.\n"
-                        + "Bạn có muốn kích hoạt tài khoản thư viện ngay bây giờ không?",
-                        "Kích hoạt tài khoản sinh viên",
-                        JOptionPane.YES_NO_OPTION
-                );
-
-                if (confirm != JOptionPane.YES_OPTION) {
-                    rs.close();
-                    pstmt.close();
-                    con.close();
-                    return;
-                }
-
-                String updateSql = "UPDATE TaiKhoan "
-                        + "SET trang_thai_tai_khoan = N'Đang hoạt động' "
-                        + "WHERE ten_dang_nhap = ?";
-
-                java.sql.PreparedStatement updateStmt = con.prepareStatement(updateSql);
-                updateStmt.setString(1, username);
-
-                int updated = updateStmt.executeUpdate();
-                updateStmt.close();
-
-                if (updated > 0) {
-                    JOptionPane.showMessageDialog(this,
-                            "Kích hoạt tài khoản thành công!\n"
-                            + "Xin chào " + hoTen + "!"
-                    );
-
-                    main.chuyenManHinh("cardTrangChuDocGia");
-                } else {
-                    JOptionPane.showMessageDialog(this,
-                            "Kích hoạt thất bại, vui lòng thử lại!",
-                            "Lỗi",
-                            JOptionPane.ERROR_MESSAGE
-                    );
-                }
-
-                rs.close();
-                pstmt.close();
-                con.close();
-                return;
-            }
-
-            // 4. Tài khoản đang hoạt động
-            if (trangThai.equalsIgnoreCase("Đang hoạt động")) {
-                JOptionPane.showMessageDialog(this,
-                        "Xin chào " + hoTen + "!\nVai trò: " + vaiTro
-                );
-
-                if (vaiTro.equalsIgnoreCase("Thủ thư")) {
-                    main.chuyenManHinh("cardTrangChuThuThu");
-                } else if (vaiTro.equalsIgnoreCase("Sinh viên") || vaiTro.equalsIgnoreCase("Độc giả ngoài")) {
-                    main.chuyenManHinh("cardTrangChuDocGia");
-                } else {
-                    JOptionPane.showMessageDialog(this, "Vai trò tài khoản chưa được hỗ trợ: " + vaiTro);
-                }
-
-                rs.close();
-                pstmt.close();
-                con.close();
-                return;
-            }
-
-            // 5. Trạng thái lạ
-            JOptionPane.showMessageDialog(this,
-                    "Trạng thái tài khoản không hợp lệ: " + trangThai,
-                    "Lỗi trạng thái",
-                    JOptionPane.WARNING_MESSAGE
-            );
-
-        } else {
-            JOptionPane.showMessageDialog(this, "Sai tên đăng nhập hoặc mật khẩu!");
-        }
-
-        rs.close();
-        pstmt.close();
-        con.close();
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        JOptionPane.showMessageDialog(this, "Lỗi kết nối cơ sở dữ liệu: " + e.getMessage());
+    } else {
+        JOptionPane.showMessageDialog(this,
+                "Vai trò tài khoản chưa được hỗ trợ: " + ketQua.getVaiTro()
+        );
     }
 }
 
