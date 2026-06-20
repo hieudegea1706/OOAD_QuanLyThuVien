@@ -6,12 +6,14 @@ import java.sql.Timestamp;
 public class DocGiaDTO {
     private String tenDangNhap;
     private String hoTen;
+    private String cccd;
     private String soDienThoai;
     private String vaiTro;
     private String trangThaiTaiKhoan;
     private BigDecimal tienCoc;
     private Timestamp ngayDangKy;
     private Timestamp ngayKichHoat;
+    private String ghiChu;
 
     public String getTenDangNhap() {
         return tenDangNhap;
@@ -27,6 +29,14 @@ public class DocGiaDTO {
 
     public void setHoTen(String hoTen) {
         this.hoTen = hoTen;
+    }
+
+    public String getCccd() {
+        return cccd;
+    }
+
+    public void setCccd(String cccd) {
+        this.cccd = cccd;
     }
 
     public String getSoDienThoai() {
@@ -75,5 +85,13 @@ public class DocGiaDTO {
 
     public void setNgayKichHoat(Timestamp ngayKichHoat) {
         this.ngayKichHoat = ngayKichHoat;
+    }
+
+    public String getGhiChu() {
+        return ghiChu;
+    }
+
+    public void setGhiChu(String ghiChu) {
+        this.ghiChu = ghiChu;
     }
 }
