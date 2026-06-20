@@ -14,13 +14,16 @@ import java.sql.SQLException;
 public class DatabaseHelper {
     public static Connection getConnection() throws SQLException {
         
-        String connectionUrl = "jdbc:sqlserver://localhost:1433;"
+        String connectionUrl = "jdbc:sqlserver://100.110.119.41:1433;"
                 + "databaseName=QuanLyThuVien;"
                 + "user=sa;"
                 + "password=Ducphuc30705;"
+                + "password=Ducphuc30705;" 
                 + "encrypt=true;"
                 + "trustServerCertificate=true;";
         
         return DriverManager.getConnection(connectionUrl);
     }
 }
+
+// hahaa
