@@ -3,12 +3,14 @@ package views;
 import components.ModernButton;
 import components.ModernTextField;
 import components.RoundedPanel;
+import controllers.QuanLySachController;
+import dto.CuonSachDTO;
+import dto.DauSachDTO;
+import dto.KetQuaXuLy;
+import java.util.List;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.Font;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.JComboBox;
@@ -19,10 +21,10 @@ import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.table.DefaultTableModel;
-import utils.DatabaseHelper;
 import utils.UITheme;
 
 public class QuanLySachPnl extends JPanel {
+    private final QuanLySachController quanLySachController = new QuanLySachController();
 
     // =========================
     // TAB ĐẦU SÁCH
@@ -69,6 +71,41 @@ public class QuanLySachPnl extends JPanel {
 
         add(tabs, BorderLayout.CENTER);
     }
+    
+    private void doDanhSachDauSachLenBang(List<DauSachDTO> danhSach) {
+    DefaultTableModel model = (DefaultTableModel) tblDauSach.getModel();
+    model.setRowCount(0);
+
+    for (DauSachDTO ds : danhSach) {
+        model.addRow(new Object[]{
+            ds.getIdDauSach(),
+            ds.getTenSach(),
+            ds.getTacGia(),
+            ds.getTheLoai(),
+            ds.getNhaXuatBan(),
+            ds.getNamXuatBan(),
+            ds.getTrangThai()
+        });
+    }
+}
+    
+    private void doDanhSachCuonSachLenBang(List<CuonSachDTO> danhSach) {
+    DefaultTableModel model = (DefaultTableModel) tblCuonSach.getModel();
+    model.setRowCount(0);
+
+    for (CuonSachDTO cs : danhSach) {
+        model.addRow(new Object[]{
+            cs.getIdCaBiet(),
+            cs.getIdDauSach(),
+            cs.getTenSach(),
+            cs.getTrangThaiLuuThong(),
+            cs.getTinhTrangVatLy(),
+            cs.getViTriKe(),
+            cs.getNgayNhapKho(),
+            cs.getGhiChu()
+        });
+    }
+}
 
     // ============================================================
     // TAB 1: ĐẦU SÁCH
@@ -531,304 +568,147 @@ formCard.add(scroll, BorderLayout.CENTER);
     // ============================================================
 
     private void taiDuLieuDauSach() {
-        DefaultTableModel model = (DefaultTableModel) tblDauSach.getModel();
-        model.setRowCount(0);
+    try {
+        List<DauSachDTO> danhSach = quanLySachController.layDanhSachDauSach();
+        doDanhSachDauSachLenBang(danhSach);
 
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "SELECT id_dau_sach, ten_sach, tac_gia, the_loai, "
-                    + "nha_xuat_ban, nam_xuat_ban, trang_thai "
-                    + "FROM DauSach "
-                    + "ORDER BY id_dau_sach";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getString("id_dau_sach"),
-                    rs.getString("ten_sach"),
-                    rs.getString("tac_gia"),
-                    rs.getString("the_loai"),
-                    rs.getString("nha_xuat_ban"),
-                    rs.getObject("nam_xuat_ban"),
-                    rs.getString("trang_thai")
-                });
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu đầu sách: " + e.getMessage());
-        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu đầu sách: " + e.getMessage());
     }
+}
 
     private void timKiemDauSach() {
-        String tuKhoa = txtTimKiemDauSach.getText().trim();
+    String tuKhoa = txtTimKiemDauSach.getText().trim();
 
-        if (tuKhoa.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập từ khóa tìm kiếm!");
-            return;
-        }
-
-        DefaultTableModel model = (DefaultTableModel) tblDauSach.getModel();
-        model.setRowCount(0);
-
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "SELECT id_dau_sach, ten_sach, tac_gia, the_loai, "
-                    + "nha_xuat_ban, nam_xuat_ban, trang_thai "
-                    + "FROM DauSach "
-                    + "WHERE id_dau_sach LIKE ? "
-                    + "OR ten_sach LIKE ? "
-                    + "OR tac_gia LIKE ? "
-                    + "OR the_loai LIKE ? "
-                    + "OR nha_xuat_ban LIKE ? "
-                    + "ORDER BY id_dau_sach";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-
-            String keyword = "%" + tuKhoa + "%";
-            pstmt.setString(1, keyword);
-            pstmt.setString(2, keyword);
-            pstmt.setString(3, keyword);
-            pstmt.setString(4, keyword);
-            pstmt.setString(5, keyword);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getString("id_dau_sach"),
-                    rs.getString("ten_sach"),
-                    rs.getString("tac_gia"),
-                    rs.getString("the_loai"),
-                    rs.getString("nha_xuat_ban"),
-                    rs.getObject("nam_xuat_ban"),
-                    rs.getString("trang_thai")
-                });
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm đầu sách: " + e.getMessage());
-        }
+    if (tuKhoa.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Vui lòng nhập từ khóa tìm kiếm!");
+        return;
     }
+
+    try {
+        List<DauSachDTO> danhSach = quanLySachController.timKiemDauSach(tuKhoa);
+        doDanhSachDauSachLenBang(danhSach);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm đầu sách: " + e.getMessage());
+    }
+}
 
     private void doDuLieuDauSachLenForm() {
-        int row = tblDauSach.getSelectedRow();
+    int row = tblDauSach.getSelectedRow();
 
-        if (row < 0) {
+    if (row < 0) {
+        return;
+    }
+
+    DefaultTableModel model = (DefaultTableModel) tblDauSach.getModel();
+    String id = String.valueOf(model.getValueAt(row, 0));
+
+    try {
+        DauSachDTO ds = quanLySachController.timDauSachTheoId(id);
+
+        if (ds == null) {
+            JOptionPane.showMessageDialog(this, "Không tìm thấy chi tiết đầu sách!");
             return;
         }
 
-        DefaultTableModel model = (DefaultTableModel) tblDauSach.getModel();
+        txtMaDauSach.setText(ds.getIdDauSach());
+        txtTenSach.setText(ds.getTenSach());
+        txtTacGia.setText(ds.getTacGia());
+        txtTheLoai.setText(ds.getTheLoai());
+        txtNhaXuatBan.setText(ds.getNhaXuatBan());
+        txtNamXuatBan.setText(ds.getNamXuatBan() == null ? "" : String.valueOf(ds.getNamXuatBan()));
+        txtTomTat.setText(ds.getTomTat());
+        txtTrangThaiDauSach.setText(ds.getTrangThai());
 
-        String id = String.valueOf(model.getValueAt(row, 0));
-
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "SELECT * FROM DauSach WHERE id_dau_sach = ?";
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            pstmt.setString(1, id);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            if (rs.next()) {
-                txtMaDauSach.setText(rs.getString("id_dau_sach"));
-                txtTenSach.setText(rs.getString("ten_sach"));
-                txtTacGia.setText(rs.getString("tac_gia"));
-                txtTheLoai.setText(rs.getString("the_loai"));
-                txtNhaXuatBan.setText(rs.getString("nha_xuat_ban"));
-
-                Object nam = rs.getObject("nam_xuat_ban");
-                txtNamXuatBan.setText(nam == null ? "" : String.valueOf(nam));
-
-                txtTomTat.setText(rs.getString("tom_tat"));
-                txtTrangThaiDauSach.setText(rs.getString("trang_thai"));
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi lấy chi tiết đầu sách: " + e.getMessage());
-        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi lấy chi tiết đầu sách: " + e.getMessage());
     }
+}
 
     private void themDauSach() {
-        try {
-            String id = txtMaDauSach.getText().trim();
-            String ten = txtTenSach.getText().trim();
-            String tacGia = txtTacGia.getText().trim();
-            String theLoai = txtTheLoai.getText().trim();
-            String nxb = txtNhaXuatBan.getText().trim();
-            String namStr = txtNamXuatBan.getText().trim();
-            String tomTat = txtTomTat.getText().trim();
+    String id = txtMaDauSach.getText().trim();
+    String ten = txtTenSach.getText().trim();
+    String tacGia = txtTacGia.getText().trim();
+    String theLoai = txtTheLoai.getText().trim();
+    String nxb = txtNhaXuatBan.getText().trim();
+    String namStr = txtNamXuatBan.getText().trim();
+    String tomTat = txtTomTat.getText().trim();
 
-            if (id.isEmpty() || ten.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Mã đầu sách và tên sách không được để trống!");
-                return;
-            }
+    KetQuaXuLy ketQua = quanLySachController.themDauSach(
+            id,
+            ten,
+            tacGia,
+            theLoai,
+            nxb,
+            namStr,
+            tomTat
+    );
 
-            Integer nam = null;
-            if (!namStr.isEmpty()) {
-                nam = Integer.parseInt(namStr);
-            }
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
 
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "INSERT INTO DauSach "
-                    + "(id_dau_sach, ten_sach, tac_gia, the_loai, nha_xuat_ban, nam_xuat_ban, tom_tat, trang_thai) "
-                    + "VALUES (?, ?, ?, ?, ?, ?, ?, N'Còn phục vụ')";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            pstmt.setString(1, id);
-            pstmt.setString(2, ten);
-            pstmt.setString(3, tacGia);
-            pstmt.setString(4, theLoai);
-            pstmt.setString(5, nxb);
-
-            if (nam == null) {
-                pstmt.setNull(6, java.sql.Types.INTEGER);
-            } else {
-                pstmt.setInt(6, nam);
-            }
-
-            pstmt.setString(7, tomTat);
-
-            pstmt.executeUpdate();
-
-            JOptionPane.showMessageDialog(this, "Thêm đầu sách thành công!");
-
-            pstmt.close();
-            con.close();
-
-            lamMoiFormDauSach();
-            taiDuLieuDauSach();
-
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Năm xuất bản phải là số!");
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi thêm đầu sách: " + e.getMessage());
-        }
+    if (ketQua.isThanhCong()) {
+        lamMoiFormDauSach();
+        taiDuLieuDauSach();
     }
+}
 
     private void suaDauSach() {
-        try {
-            String id = txtMaDauSach.getText().trim();
-            String ten = txtTenSach.getText().trim();
-            String tacGia = txtTacGia.getText().trim();
-            String theLoai = txtTheLoai.getText().trim();
-            String nxb = txtNhaXuatBan.getText().trim();
-            String namStr = txtNamXuatBan.getText().trim();
-            String tomTat = txtTomTat.getText().trim();
+    String id = txtMaDauSach.getText().trim();
+    String ten = txtTenSach.getText().trim();
+    String tacGia = txtTacGia.getText().trim();
+    String theLoai = txtTheLoai.getText().trim();
+    String nxb = txtNhaXuatBan.getText().trim();
+    String namStr = txtNamXuatBan.getText().trim();
+    String tomTat = txtTomTat.getText().trim();
 
-            if (id.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng chọn hoặc nhập mã đầu sách cần cập nhật!");
-                return;
-            }
+    KetQuaXuLy ketQua = quanLySachController.capNhatDauSach(
+            id,
+            ten,
+            tacGia,
+            theLoai,
+            nxb,
+            namStr,
+            tomTat
+    );
 
-            Integer nam = null;
-            if (!namStr.isEmpty()) {
-                nam = Integer.parseInt(namStr);
-            }
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
 
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "UPDATE DauSach "
-                    + "SET ten_sach = ?, tac_gia = ?, the_loai = ?, nha_xuat_ban = ?, nam_xuat_ban = ?, tom_tat = ? "
-                    + "WHERE id_dau_sach = ?";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            pstmt.setString(1, ten);
-            pstmt.setString(2, tacGia);
-            pstmt.setString(3, theLoai);
-            pstmt.setString(4, nxb);
-
-            if (nam == null) {
-                pstmt.setNull(5, java.sql.Types.INTEGER);
-            } else {
-                pstmt.setInt(5, nam);
-            }
-
-            pstmt.setString(6, tomTat);
-            pstmt.setString(7, id);
-
-            int result = pstmt.executeUpdate();
-
-            if (result > 0) {
-                JOptionPane.showMessageDialog(this, "Cập nhật đầu sách thành công!");
-                taiDuLieuDauSach();
-            } else {
-                JOptionPane.showMessageDialog(this, "Không tìm thấy đầu sách cần cập nhật!");
-            }
-
-            pstmt.close();
-            con.close();
-
-        } catch (NumberFormatException e) {
-            JOptionPane.showMessageDialog(this, "Năm xuất bản phải là số!");
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật đầu sách: " + e.getMessage());
-        }
+    if (ketQua.isThanhCong()) {
+        taiDuLieuDauSach();
     }
+}
 
     private void ngungPhucVuDauSach() {
-        String id = txtMaDauSach.getText().trim();
+    String id = txtMaDauSach.getText().trim();
 
-        if (id.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn đầu sách cần ngừng phục vụ!");
-            return;
-        }
-
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Bạn có chắc muốn chuyển đầu sách này sang trạng thái 'Ngừng phục vụ' không?",
-                "Xác nhận",
-                JOptionPane.YES_NO_OPTION
-        );
-
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "UPDATE DauSach SET trang_thai = N'Ngừng phục vụ' WHERE id_dau_sach = ?";
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            pstmt.setString(1, id);
-
-            int result = pstmt.executeUpdate();
-
-            if (result > 0) {
-                JOptionPane.showMessageDialog(this, "Đã chuyển đầu sách sang trạng thái Ngừng phục vụ!");
-                taiDuLieuDauSach();
-            }
-
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi ngừng phục vụ đầu sách: " + e.getMessage());
-        }
+    if (id.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Vui lòng chọn đầu sách cần ngừng phục vụ!");
+        return;
     }
+
+    int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Bạn có chắc muốn chuyển đầu sách này sang trạng thái 'Ngừng phục vụ' không?",
+            "Xác nhận",
+            JOptionPane.YES_NO_OPTION
+    );
+
+    if (confirm != JOptionPane.YES_OPTION) {
+        return;
+    }
+
+    KetQuaXuLy ketQua = quanLySachController.ngungPhucVuDauSach(id);
+
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
+
+    if (ketQua.isThanhCong()) {
+        taiDuLieuDauSach();
+    }
+}
 
     private void lamMoiFormDauSach() {
         txtMaDauSach.setText("");
@@ -847,118 +727,33 @@ formCard.add(scroll, BorderLayout.CENTER);
     // ============================================================
 
     private void taiDuLieuCuonSach() {
-        DefaultTableModel model = (DefaultTableModel) tblCuonSach.getModel();
-        model.setRowCount(0);
+    try {
+        List<CuonSachDTO> danhSach = quanLySachController.layDanhSachCuonSach();
+        doDanhSachCuonSachLenBang(danhSach);
 
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "SELECT "
-                    + "cs.id_ca_biet, "
-                    + "cs.id_dau_sach, "
-                    + "ds.ten_sach, "
-                    + "cs.trang_thai_luu_thong, "
-                    + "cs.tinh_trang_vat_ly, "
-                    + "cs.vi_tri_ke, "
-                    + "cs.ngay_nhap_kho, "
-                    + "cs.ghi_chu "
-                    + "FROM CuonSach cs "
-                    + "JOIN DauSach ds ON cs.id_dau_sach = ds.id_dau_sach "
-                    + "ORDER BY cs.id_ca_biet";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getString("id_ca_biet"),
-                    rs.getString("id_dau_sach"),
-                    rs.getString("ten_sach"),
-                    rs.getString("trang_thai_luu_thong"),
-                    rs.getString("tinh_trang_vat_ly"),
-                    rs.getString("vi_tri_ke"),
-                    rs.getTimestamp("ngay_nhap_kho"),
-                    rs.getString("ghi_chu")
-                });
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu cuốn sách: " + e.getMessage());
-        }
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tải dữ liệu cuốn sách: " + e.getMessage());
     }
+}
 
     private void timKiemCuonSach() {
-        String tuKhoa = txtTimKiemCuonSach.getText().trim();
+    String tuKhoa = txtTimKiemCuonSach.getText().trim();
 
-        if (tuKhoa.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập từ khóa tìm kiếm!");
-            return;
-        }
-
-        DefaultTableModel model = (DefaultTableModel) tblCuonSach.getModel();
-        model.setRowCount(0);
-
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "SELECT "
-                    + "cs.id_ca_biet, "
-                    + "cs.id_dau_sach, "
-                    + "ds.ten_sach, "
-                    + "cs.trang_thai_luu_thong, "
-                    + "cs.tinh_trang_vat_ly, "
-                    + "cs.vi_tri_ke, "
-                    + "cs.ngay_nhap_kho, "
-                    + "cs.ghi_chu "
-                    + "FROM CuonSach cs "
-                    + "JOIN DauSach ds ON cs.id_dau_sach = ds.id_dau_sach "
-                    + "WHERE cs.id_ca_biet LIKE ? "
-                    + "OR cs.id_dau_sach LIKE ? "
-                    + "OR ds.ten_sach LIKE ? "
-                    + "OR cs.trang_thai_luu_thong LIKE ? "
-                    + "OR cs.tinh_trang_vat_ly LIKE ? "
-                    + "OR cs.vi_tri_ke LIKE ? "
-                    + "ORDER BY cs.id_ca_biet";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-
-            String keyword = "%" + tuKhoa + "%";
-            pstmt.setString(1, keyword);
-            pstmt.setString(2, keyword);
-            pstmt.setString(3, keyword);
-            pstmt.setString(4, keyword);
-            pstmt.setString(5, keyword);
-            pstmt.setString(6, keyword);
-
-            ResultSet rs = pstmt.executeQuery();
-
-            while (rs.next()) {
-                model.addRow(new Object[]{
-                    rs.getString("id_ca_biet"),
-                    rs.getString("id_dau_sach"),
-                    rs.getString("ten_sach"),
-                    rs.getString("trang_thai_luu_thong"),
-                    rs.getString("tinh_trang_vat_ly"),
-                    rs.getString("vi_tri_ke"),
-                    rs.getTimestamp("ngay_nhap_kho"),
-                    rs.getString("ghi_chu")
-                });
-            }
-
-            rs.close();
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm cuốn sách: " + e.getMessage());
-        }
+    if (tuKhoa.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Vui lòng nhập từ khóa tìm kiếm!");
+        return;
     }
+
+    try {
+        List<CuonSachDTO> danhSach = quanLySachController.timKiemCuonSach(tuKhoa);
+        doDanhSachCuonSachLenBang(danhSach);
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        JOptionPane.showMessageDialog(this, "Lỗi khi tìm kiếm cuốn sách: " + e.getMessage());
+    }
+}
 
     private void doDuLieuCuonSachLenForm() {
         int row = tblCuonSach.getSelectedRow();
@@ -980,141 +775,81 @@ formCard.add(scroll, BorderLayout.CENTER);
     }
 
     private void themCuonSach() {
-        try {
-            String idCaBiet = txtMaCaBiet.getText().trim();
-            String idDauSach = txtMaDauSachCuaCuon.getText().trim();
-            String trangThai = String.valueOf(cboTrangThaiLuuThong.getSelectedItem());
-            String tinhTrang = String.valueOf(cboTinhTrangVatLy.getSelectedItem());
-            String viTri = txtViTriKe.getText().trim();
-            String ghiChu = txtGhiChuCuonSach.getText().trim();
+    String idCaBiet = txtMaCaBiet.getText().trim();
+    String idDauSach = txtMaDauSachCuaCuon.getText().trim();
+    String trangThai = String.valueOf(cboTrangThaiLuuThong.getSelectedItem());
+    String tinhTrang = String.valueOf(cboTinhTrangVatLy.getSelectedItem());
+    String viTri = txtViTriKe.getText().trim();
+    String ghiChu = txtGhiChuCuonSach.getText().trim();
 
-            if (idCaBiet.isEmpty() || idDauSach.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Mã cá biệt và mã đầu sách không được để trống!");
-                return;
-            }
+    KetQuaXuLy ketQua = quanLySachController.themCuonSach(
+            idCaBiet,
+            idDauSach,
+            trangThai,
+            tinhTrang,
+            viTri,
+            ghiChu
+    );
 
-            Connection con = DatabaseHelper.getConnection();
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
 
-            String sql = "INSERT INTO CuonSach "
-                    + "(id_ca_biet, id_dau_sach, trang_thai_luu_thong, tinh_trang_vat_ly, vi_tri_ke, ghi_chu) "
-                    + "VALUES (?, ?, ?, ?, ?, ?)";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            pstmt.setString(1, idCaBiet);
-            pstmt.setString(2, idDauSach);
-            pstmt.setString(3, trangThai);
-            pstmt.setString(4, tinhTrang);
-            pstmt.setString(5, viTri);
-            pstmt.setString(6, ghiChu);
-
-            pstmt.executeUpdate();
-
-            JOptionPane.showMessageDialog(this, "Thêm cuốn sách thành công!");
-
-            pstmt.close();
-            con.close();
-
-            lamMoiFormCuonSach();
-            taiDuLieuCuonSach();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi thêm cuốn sách: " + e.getMessage());
-        }
+    if (ketQua.isThanhCong()) {
+        lamMoiFormCuonSach();
+        taiDuLieuCuonSach();
     }
+}
 
     private void suaCuonSach() {
-        try {
-            String idCaBiet = txtMaCaBiet.getText().trim();
-            String idDauSach = txtMaDauSachCuaCuon.getText().trim();
-            String trangThai = String.valueOf(cboTrangThaiLuuThong.getSelectedItem());
-            String tinhTrang = String.valueOf(cboTinhTrangVatLy.getSelectedItem());
-            String viTri = txtViTriKe.getText().trim();
-            String ghiChu = txtGhiChuCuonSach.getText().trim();
+    String idCaBiet = txtMaCaBiet.getText().trim();
+    String idDauSach = txtMaDauSachCuaCuon.getText().trim();
+    String trangThai = String.valueOf(cboTrangThaiLuuThong.getSelectedItem());
+    String tinhTrang = String.valueOf(cboTinhTrangVatLy.getSelectedItem());
+    String viTri = txtViTriKe.getText().trim();
+    String ghiChu = txtGhiChuCuonSach.getText().trim();
 
-            if (idCaBiet.isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Vui lòng chọn hoặc nhập mã cá biệt cần cập nhật!");
-                return;
-            }
+    KetQuaXuLy ketQua = quanLySachController.capNhatCuonSach(
+            idCaBiet,
+            idDauSach,
+            trangThai,
+            tinhTrang,
+            viTri,
+            ghiChu
+    );
 
-            Connection con = DatabaseHelper.getConnection();
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
 
-            String sql = "UPDATE CuonSach "
-                    + "SET id_dau_sach = ?, trang_thai_luu_thong = ?, tinh_trang_vat_ly = ?, vi_tri_ke = ?, ghi_chu = ? "
-                    + "WHERE id_ca_biet = ?";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            pstmt.setString(1, idDauSach);
-            pstmt.setString(2, trangThai);
-            pstmt.setString(3, tinhTrang);
-            pstmt.setString(4, viTri);
-            pstmt.setString(5, ghiChu);
-            pstmt.setString(6, idCaBiet);
-
-            int result = pstmt.executeUpdate();
-
-            if (result > 0) {
-                JOptionPane.showMessageDialog(this, "Cập nhật cuốn sách thành công!");
-                taiDuLieuCuonSach();
-            } else {
-                JOptionPane.showMessageDialog(this, "Không tìm thấy cuốn sách cần cập nhật!");
-            }
-
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi cập nhật cuốn sách: " + e.getMessage());
-        }
+    if (ketQua.isThanhCong()) {
+        taiDuLieuCuonSach();
     }
+}
 
     private void thanhLyCuonSach() {
-        String idCaBiet = txtMaCaBiet.getText().trim();
+    String idCaBiet = txtMaCaBiet.getText().trim();
 
-        if (idCaBiet.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng chọn cuốn sách cần thanh lý!");
-            return;
-        }
-
-        int confirm = JOptionPane.showConfirmDialog(
-                this,
-                "Bạn muốn chuyển cuốn sách này sang trạng thái 'Đã thanh lý' không?",
-                "Xác nhận thanh lý",
-                JOptionPane.YES_NO_OPTION
-        );
-
-        if (confirm != JOptionPane.YES_OPTION) {
-            return;
-        }
-
-        try {
-            Connection con = DatabaseHelper.getConnection();
-
-            String sql = "UPDATE CuonSach "
-                    + "SET trang_thai_luu_thong = N'Đã thanh lý', "
-                    + "tinh_trang_vat_ly = N'Hư hỏng', "
-                    + "ghi_chu = N'Đã thanh lý khỏi kho lưu thông' "
-                    + "WHERE id_ca_biet = ?";
-
-            PreparedStatement pstmt = con.prepareStatement(sql);
-            pstmt.setString(1, idCaBiet);
-
-            int result = pstmt.executeUpdate();
-
-            if (result > 0) {
-                JOptionPane.showMessageDialog(this, "Đã thanh lý cuốn sách!");
-                taiDuLieuCuonSach();
-            }
-
-            pstmt.close();
-            con.close();
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            JOptionPane.showMessageDialog(this, "Lỗi khi thanh lý cuốn sách: " + e.getMessage());
-        }
+    if (idCaBiet.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Vui lòng chọn cuốn sách cần thanh lý!");
+        return;
     }
+
+    int confirm = JOptionPane.showConfirmDialog(
+            this,
+            "Bạn muốn chuyển cuốn sách này sang trạng thái 'Đã thanh lý' không?",
+            "Xác nhận thanh lý",
+            JOptionPane.YES_NO_OPTION
+    );
+
+    if (confirm != JOptionPane.YES_OPTION) {
+        return;
+    }
+
+    KetQuaXuLy ketQua = quanLySachController.thanhLyCuonSach(idCaBiet);
+
+    JOptionPane.showMessageDialog(this, ketQua.getThongBao());
+
+    if (ketQua.isThanhCong()) {
+        taiDuLieuCuonSach();
+    }
+}
 
     private void lamMoiFormCuonSach() {
         txtMaCaBiet.setText("");
