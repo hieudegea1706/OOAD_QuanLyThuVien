@@ -17,7 +17,7 @@ public class DatabaseHelper {
         String connectionUrl = "jdbc:sqlserver://localhost:1433;"
                 + "databaseName=QuanLyThuVien;"
                 + "user=sa;"
-                + "password=hieu17062005;" 
+                + "password=Ducphuc30705;"
                 + "encrypt=true;"
                 + "trustServerCertificate=true;";
         
